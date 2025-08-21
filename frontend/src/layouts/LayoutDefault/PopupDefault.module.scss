@@ -133,3 +133,16 @@
     }
   }
 }
+
+.popupContent {
+  background: var(--bg-primary);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-xl);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  position: relative;
+  // Remove width fixa para que se adapte ao conteúdo
+  width: auto;
+  min-width: 400px;
+}

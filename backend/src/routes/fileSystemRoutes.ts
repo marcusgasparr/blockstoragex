@@ -39,4 +39,7 @@ router.get("/read", FileSystemController.readFile);
 // GET /api/files/download?path=C:\arquivo.txt - Download de arquivo
 router.get("/download", FileSystemController.downloadFile);
 
+// GET /api/files/search?query=arquivo&rootPath=H:\ - Buscar arquivos globalmente
+router.get("/search", FileSystemController.searchFiles);
+
 export default router;

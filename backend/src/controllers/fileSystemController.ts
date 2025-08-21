@@ -336,4 +336,38 @@ export class FileSystemController {
       });
     }
   }
+
+  static async searchFiles(req: Request, res: Response): Promise<void> {
+    try {
+      const { query, rootPath } = req.query;
+
+      if (!query || !rootPath) {
+        res.status(400).json({
+          success: false,
+          message: "Query e rootPath são obrigatórios",
+        });
+        return;
+      }
+
+      const results = await FileSystemService.searchFiles(
+        query as string,
+        rootPath as string
+      );
+
+      res.status(200).json({
+        success: true,
+        data: results,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Erro ao buscar arquivos:", error);
+
+      res.status(500).json({
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Erro ao buscar arquivos",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
 }

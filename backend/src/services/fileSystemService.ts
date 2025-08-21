@@ -494,4 +494,78 @@ export class FileSystemService {
       );
     }
   }
+
+  static async searchFiles(
+    query: string,
+    rootPath: string
+  ): Promise<FileSystemItem[]> {
+    try {
+      const results: FileSystemItem[] = [];
+      const searchTerm = query.toLowerCase();
+
+      const searchInDirectory = async (dirPath: string) => {
+        try {
+          if (!this.isPathAllowed(dirPath)) {
+            return;
+          }
+
+          const files = fs.readdirSync(dirPath);
+
+          for (const file of files) {
+            try {
+              const filePath = path.join(dirPath, file);
+              const fileStat = fs.statSync(filePath);
+
+              // Verificar se o nome contém o termo de busca
+              if (file.toLowerCase().includes(searchTerm)) {
+                const item: FileSystemItem = {
+                  name: file,
+                  path: filePath,
+                  type: fileStat.isDirectory() ? "directory" : "file",
+                  size: fileStat.size,
+                  modified: fileStat.mtime,
+                  extension: fileStat.isFile()
+                    ? path.extname(file).toLowerCase()
+                    : undefined,
+                  icon: this.getFileIcon(file, fileStat.isDirectory()),
+                  isStarred: this.favorites.has(filePath),
+                  folderColor: fileStat.isDirectory()
+                    ? this.folderColors.get(filePath)
+                    : undefined,
+                };
+
+                results.push(item);
+              }
+
+              // Se for diretório, buscar recursivamente (limitando profundidade)
+              if (fileStat.isDirectory() && results.length < 1000) {
+                await searchInDirectory(filePath);
+              }
+            } catch (error: any) {
+              // Ignorar erros de acesso (pastas protegidas, etc.)
+              continue;
+            }
+          }
+        } catch (error) {
+          // Ignorar erros de leitura de diretório
+          return;
+        }
+      };
+
+      await searchInDirectory(rootPath);
+
+      // Ordenar resultados: diretórios primeiro, depois arquivos, ambos alfabeticamente
+      results.sort((a, b) => {
+        if (a.type !== b.type) {
+          return a.type === "directory" ? -1 : 1;
+        }
+        return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+      });
+
+      return results.slice(0, 500); // Limitar a 500 resultados
+    } catch (error) {
+      console.error("Erro na busca:", error);
+      throw new Error("Erro ao realizar busca");
+    }
+  }
 }

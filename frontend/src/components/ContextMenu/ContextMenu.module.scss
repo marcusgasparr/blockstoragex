@@ -10,8 +10,14 @@
   padding: 8px 0;
   min-width: 200px;
   max-width: 250px;
-  max-height: calc(100vh - 40px);
+  max-height: calc(100vh - 32px);
   overflow-y: auto;
+  user-select: none;
+
+  // Garantir que o menu sempre apareça acima de outros elementos
+  &[data-position-adjusted="true"] {
+    animation: contextMenuAppear 0.12s ease-out;
+  }
 }
 
 .disabled {
@@ -107,9 +113,16 @@
   min-width: 150px;
   z-index: 1001;
 
-  .menuItem {
-    padding: 6px 12px;
-    font-size: 13px;
+  // Ajustar submenu se sair da tela
+  .submenuContainer:last-child & {
+    left: -100%;
+    right: 100%;
+  }
+
+  // Para submenus que podem ficar muito no final da tela
+  @media (max-width: 600px) {
+    left: -100%;
+    right: 100%;
   }
 }
 

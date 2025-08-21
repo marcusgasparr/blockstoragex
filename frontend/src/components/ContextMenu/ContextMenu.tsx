@@ -38,6 +38,9 @@ interface ContextMenuProps {
   canPaste: boolean;
   onDownload: () => void;
   onSelectMode: () => void;
+  // Props específicas para página de favoritos
+  isStarredPage?: boolean;
+  onGoToFile?: () => void;
 }
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -55,7 +58,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onSetFolderColor,
   canPaste,
   onDownload,
-  onSelectMode
+  onSelectMode,
+  isStarredPage = false,
+  onGoToFile
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [adjustedPosition, setAdjustedPosition] = useState(position);
@@ -65,32 +70,63 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       const menu = menuRef.current;
       const viewport = {
         width: window.innerWidth,
-        height: window.innerHeight
+        height: window.innerHeight,
+        scrollTop: window.pageYOffset || document.documentElement.scrollTop,
+        scrollLeft: window.pageXOffset || document.documentElement.scrollLeft
       };
 
+      // Forçar recálculo do tamanho do menu
+      menu.style.visibility = 'hidden';
+      menu.style.display = 'block';
       const menuRect = menu.getBoundingClientRect();
+      menu.style.visibility = 'visible';
+
+      const margin = 16; // Margem mínima das bordas
       let newX = position.x;
       let newY = position.y;
 
-      // Ajustar posição X se o menu sair da tela
-      if (position.x + menuRect.width > viewport.width) {
-        newX = viewport.width - menuRect.width - 20;
-      }
-      if (newX < 10) {
-        newX = 10;
+      // Ajustar posição X (horizontal)
+      if (newX + menuRect.width + margin > viewport.width) {
+        // Se não cabe à direita, posiciona à esquerda do cursor
+        newX = position.x - menuRect.width;
+
+        // Se ainda não cabe à esquerda, força dentro da tela
+        if (newX < margin) {
+          newX = viewport.width - menuRect.width - margin;
+        }
       }
 
-      // Ajustar posição Y se o menu sair da tela
-      if (position.y + menuRect.height > viewport.height) {
-        newY = viewport.height - menuRect.height - 20;
-      }
-      if (newY < 10) {
-        newY = 10;
+      // Garantir margem mínima à esquerda
+      if (newX < margin) {
+        newX = margin;
       }
 
-      // Se ainda assim não cabe, posicionar no centro
-      if (menuRect.height > viewport.height - 40) {
-        newY = 20;
+      // Ajustar posição Y (vertical)
+      const availableHeight = viewport.height - margin * 2;
+
+      if (newY + menuRect.height + margin > viewport.height) {
+        // Se não cabe abaixo, posiciona acima do cursor
+        newY = position.y - menuRect.height;
+
+        // Se ainda não cabe acima, força dentro da tela
+        if (newY < margin + viewport.scrollTop) {
+          newY = viewport.height - menuRect.height - margin;
+        }
+      }
+
+      // Garantir margem mínima no topo
+      if (newY < margin + viewport.scrollTop) {
+        newY = margin + viewport.scrollTop;
+      }
+
+      // Se o menu for muito alto para a viewport, limitar altura
+      if (menuRect.height > availableHeight) {
+        newY = margin + viewport.scrollTop;
+        menu.style.maxHeight = `${availableHeight}px`;
+        menu.style.overflowY = 'auto';
+      } else {
+        menu.style.maxHeight = '';
+        menu.style.overflowY = '';
       }
 
       setAdjustedPosition({ x: newX, y: newY });
@@ -128,6 +164,93 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   const isDirectory = hasSelection && selectedItems[0].type === 'directory';
   const isStarred = hasSelection && selectedItems[0].isStarred;
 
+  // Menu específico para página de favoritos
+  if (isStarredPage) {
+    const starredMenuItems: MenuItem[] = [
+      {
+        label: 'Ir até o arquivo',
+        icon: 'fas fa-external-link-alt',
+        action: onGoToFile,
+        disabled: !hasSelection
+      },
+      {
+        label: 'Selecionar',
+        icon: 'fas fa-check-square',
+        action: onSelectMode,
+        disabled: false
+      },
+      { type: 'separator' },
+      {
+        label: 'Copiar',
+        icon: 'fas fa-copy',
+        action: onCopy,
+        disabled: !hasSelection,
+        shortcut: 'Ctrl+C'
+      },
+      {
+        label: 'Recortar',
+        icon: 'fas fa-cut',
+        action: onCut,
+        disabled: !hasSelection,
+        shortcut: 'Ctrl+X'
+      },
+      {
+        label: 'Colar',
+        icon: 'fas fa-paste',
+        action: onPaste,
+        disabled: !canPaste,
+        shortcut: 'Ctrl+V'
+      },
+      { type: 'separator' },
+      {
+        label: 'Download',
+        icon: 'fas fa-download',
+        action: onDownload,
+        disabled: !hasSelection
+      },
+      {
+        label: 'Remover dos Favoritos',
+        icon: 'fas fa-star',
+        action: onToggleStar,
+        disabled: !hasSelection
+      }
+    ];
+
+    return (
+      <div
+        ref={menuRef}
+        className={styles.contextMenu}
+        style={{
+          left: adjustedPosition.x,
+          top: adjustedPosition.y
+        }}
+      >
+        {starredMenuItems.map((item, index) => {
+          if ('type' in item && item.type === 'separator') {
+            return <div key={index} className={styles.separator} />;
+          }
+
+          return (
+            <button
+              key={index}
+              className={`${styles.menuItem} ${'disabled' in item && item.disabled ? styles.disabled : ''}`}
+              onClick={'action' in item ? item.action : undefined}
+              disabled={'disabled' in item ? item.disabled : false}
+            >
+              <i className={`${styles.icon} ${'icon' in item ? item.icon : ''}`}></i>
+              <span className={styles.label}>{'label' in item ? item.label : ''}</span>
+              {'shortcut' in item && item.shortcut && (
+                <span className={styles.shortcut}>{item.shortcut}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Menu padrão para outras páginas
+  // Menu padrão para outras páginas
   const menuItems: MenuItem[] = [
     {
       label: 'Selecionar',
