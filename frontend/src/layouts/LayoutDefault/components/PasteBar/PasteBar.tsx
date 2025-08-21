@@ -7,7 +7,7 @@ interface PasteBarProps {
     operation: 'copy' | 'cut' | null;
     items: FileSystemItem[];
     onPaste: () => void;
-    onCancel: () => void;
+    onCancel: () => any;
 }
 
 export const PasteBar: React.FC<PasteBarProps> = ({

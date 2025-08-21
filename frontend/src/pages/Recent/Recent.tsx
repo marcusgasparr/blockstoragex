@@ -7,8 +7,15 @@ import FilePreview from "../../components/FilePreview/FilePreview";
 import PopupDefault from "../../layouts/LayoutDefault/PopupDefault";
 import { FileSystemItem } from "../../services/fileSystemService";
 
-const Recent: React.FC = () => {
+interface RecentProps {
+  currentDrive?: string;
+}
+
+const Recent: React.FC<RecentProps> = ({ currentDrive }) => {
   const navigate = useNavigate();
+  const selectedDrive = currentDrive || localStorage.getItem('selectedDrive') || 'G:\\';
+  console.log('🕒 Recent usando disco:', selectedDrive);
+  
   const [recentFiles, setRecentFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +39,7 @@ const Recent: React.FC = () => {
     cutItems,
     pasteItems,
     toggleStar
-  } = useFileSystem("H:\\");
+  } = useFileSystem(selectedDrive);
 
   useEffect(() => {
     setLoading(true);
@@ -47,212 +54,186 @@ const Recent: React.FC = () => {
       }
     } catch (err: any) {
       setError(err.message || "Erro ao buscar arquivos recentes.");
+      setRecentFiles([]);
     } finally {
       setLoading(false);
     }
   }, [directoryContent]);
 
-  // Handlers do menu de contexto
-  const handleContextMenu = (e: React.MouseEvent, item: FileSystemItem) => {
-    e.preventDefault();
+  const handleItemClick = (item: FileSystemItem) => {
+    setSelectedItem(item);
+  };
+
+  const handleItemDoubleClick = (item: FileSystemItem) => {
+    if (item.type === 'file') {
+      setPreviewFile(item);
+    }
+  };
+
+  const handleContextMenu = (event: React.MouseEvent, item: FileSystemItem) => {
+    event.preventDefault();
     setSelectedItem(item);
     setContextMenu({
       isOpen: true,
-      position: { x: e.clientX, y: e.clientY }
+      position: { x: event.clientX, y: event.clientY }
     });
   };
 
   const closeContextMenu = () => {
     setContextMenu({ isOpen: false, position: { x: 0, y: 0 } });
-    setSelectedItem(null);
   };
 
-  const handleGoToFile = () => {
-    if (!selectedItem) return;
-
-    // Navegar para o diretório pai do arquivo
-    const pathParts = selectedItem.path.split('\\');
-    pathParts.pop(); // Remove o nome do arquivo
-    const parentPath = pathParts.join('\\');
-
-    // Navegar para MyDrive com o caminho específico e selecionar o arquivo
-    navigate(`/?path=${encodeURIComponent(parentPath)}&selected=${encodeURIComponent(selectedItem.path)}`);
+  const handlePreview = (item: FileSystemItem) => {
+    setPreviewFile(item);
     closeContextMenu();
   };
 
-  const handleSelectMode = () => {
+  const handleDownload = (item: FileSystemItem) => {
+    window.open(`http://localhost:3001/api/files/download?path=${encodeURIComponent(item.path)}`, '_blank');
     closeContextMenu();
   };
 
-  const handleCopy = () => {
-    if (!selectedItem) return;
-    copyItems([selectedItem]);
+  const handleToggleStar = async (item: FileSystemItem) => {
+    await toggleStar(item.path);
     closeContextMenu();
   };
 
-  const handleCut = () => {
-    if (!selectedItem) return;
-    cutItems([selectedItem]);
+  const handleCopy = (item: FileSystemItem) => {
+    copyItems([item]);
     closeContextMenu();
   };
 
-  const handlePaste = async () => {
-    if (clipboard.items.length === 0) return;
-
-    try {
-      await pasteItems();
-    } catch (error) {
-      console.error('Erro ao colar:', error);
-    }
+  const handleCut = (item: FileSystemItem) => {
+    cutItems([item]);
     closeContextMenu();
   };
 
-  const handleDownload = async () => {
-    if (!selectedItem) return;
+  if (loading || filesLoading) {
+    return (
+      <div className={styles.recent}>
+        <div className={styles.header}>
+          <h1 className={styles.title}>Arquivos Recentes</h1>
+        </div>
+        <div className={styles.loadingState}>
+          <i className="fas fa-spinner fa-spin"></i>
+          <p>Carregando arquivos recentes...</p>
+        </div>
+      </div>
+    );
+  }
 
-    try {
-      // Download de arquivo
-      const response = await fetch(`http://localhost:3001/api/files/download?path=${encodeURIComponent(selectedItem.path)}`);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = selectedItem.name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Erro ao fazer download:', error);
-      alert('Erro ao fazer download do arquivo.');
-    }
-    closeContextMenu();
-  };
-
-  const handleToggleStar = async () => {
-    if (!selectedItem) return;
-
-    try {
-      await toggleStar(selectedItem.path);
-      // Atualizar o estado local do arquivo
-      setRecentFiles(prev => prev.map(file =>
-        file.path === selectedItem.path
-          ? { ...file, isStarred: !file.isStarred }
-          : file
-      ));
-    } catch (error) {
-      console.error('Erro ao atualizar favorito:', error);
-    }
-    closeContextMenu();
-  };
-
-  const handleDoubleClick = (item: FileSystemItem) => {
-    if (item.type === 'directory') {
-      // Navegar para a pasta
-      navigate(`/?path=${encodeURIComponent(item.path)}`);
-    } else {
-      // Abrir preview do arquivo
-      setPreviewFile(item);
-    }
-  };
+  if (error || filesError) {
+    return (
+      <div className={styles.recent}>
+        <div className={styles.header}>
+          <h1 className={styles.title}>Arquivos Recentes</h1>
+        </div>
+        <div className={styles.errorState}>
+          <i className="fas fa-exclamation-triangle"></i>
+          <p>Erro: {error || filesError}</p>
+          <button onClick={() => window.location.reload()} className={styles.retryBtn}>
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.recent}>
       <div className={styles.header}>
         <h1 className={styles.title}>Arquivos Recentes</h1>
-        <span className={styles.count}>{recentFiles.length} arquivos</span>
+        <p className={styles.subtitle}>
+          {recentFiles.length} arquivos encontrados no disco {selectedDrive}
+        </p>
       </div>
 
-      {loading || filesLoading ? (
-        <div className={styles.loadingState}>
-          <i className="fas fa-spinner fa-spin"></i>
-          <p>Carregando arquivos...</p>
-        </div>
-      ) : error || filesError ? (
-        <div className={styles.errorState}>
-          <i className="fas fa-exclamation-triangle"></i>
-          <p>{error || filesError}</p>
+      {recentFiles.length === 0 ? (
+        <div className={styles.emptyState}>
+          <i className="fas fa-clock"></i>
+          <p>Nenhum arquivo recente encontrado</p>
+          <span>Os arquivos modificados recentemente aparecerão aqui</span>
         </div>
       ) : (
-        <div className={styles.filesGrid}>
-          {recentFiles.length === 0 ? (
-            <div className={styles.emptyState}>
-              <i className="fas fa-clock"></i>
-              <h3>Nenhum arquivo recente</h3>
-              <p>Os arquivos que você acessou recentemente aparecerão aqui</p>
-            </div>
-          ) : (
-            recentFiles.map((file) => (
-              <div
-                key={file.path}
-                className={styles.fileCard}
-                onDoubleClick={() => handleDoubleClick(file)}
-                onContextMenu={(e) => handleContextMenu(e, file)}
-              >
-                <div className={styles.filePreview}>
-                  <i className={file.icon}></i>
-                  {file.isStarred && (
-                    <i className={`fas fa-star ${styles.starIcon}`}></i>
-                  )}
-                </div>
-                <div className={styles.fileInfo}>
-                  <span className={styles.fileName} title={file.name}>
-                    {file.name}
-                  </span>
+        <div className={styles.filesList}>
+          {recentFiles.map((file, index) => (
+            <div
+              key={file.path}
+              className={`${styles.fileItem} ${selectedItem?.path === file.path ? styles.selected : ''}`}
+              onClick={() => handleItemClick(file)}
+              onDoubleClick={() => handleItemDoubleClick(file)}
+              onContextMenu={(e) => handleContextMenu(e, file)}
+            >
+              <div className={styles.fileIcon}>
+                <i className={file.icon}></i>
+                {file.isStarred && (
+                  <i className={`fas fa-star ${styles.starIcon}`}></i>
+                )}
+              </div>
+              
+              <div className={styles.fileInfo}>
+                <h3 className={styles.fileName}>{file.name}</h3>
+                <p className={styles.filePath}>{file.path}</p>
+                <div className={styles.fileDetails}>
+                  <span className={styles.fileSize}>{formatFileSize(file.size)}</span>
                   <span className={styles.fileDate}>
-                    {formatDate(new Date(file.modified))}
-                  </span>
-                  <span className={styles.fileSize}>
-                    {formatFileSize(file.size)}
+                    Modificado em {formatDate(file.modified)}
                   </span>
                 </div>
+              </div>
+
+              <div className={styles.fileActions}>
                 <button
-                  className={styles.moreBtn}
+                  className={styles.actionBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePreview(file);
+                  }}
+                  title="Visualizar"
+                >
+                  <i className="fas fa-eye"></i>
+                </button>
+                <button
+                  className={styles.actionBtn}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleContextMenu(e, file);
                   }}
+                  title="Mais opções"
                 >
                   <i className="fas fa-ellipsis-v"></i>
                 </button>
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Menu de contexto para arquivos recentes */}
+      {/* Context Menu */}
       <ContextMenu
         isOpen={contextMenu.isOpen}
         position={contextMenu.position}
         onClose={closeContextMenu}
         selectedItems={selectedItem ? [selectedItem] : []}
-        onCopy={handleCopy}
-        onCut={handleCut}
-        onPaste={handlePaste}
-        onDelete={() => { }} // Não permite excluir na página de recentes
-        onRename={() => { }} // Não permite renomear na página de recentes
-        onCreateFolder={() => { }} // Não permite criar pasta na página de recentes
-        onToggleStar={handleToggleStar}
-        onSetFolderColor={() => { }} // Não permite alterar cor na página de recentes
-        onDownload={handleDownload}
-        onSelectMode={handleSelectMode}
+        onPreview={() => selectedItem && handlePreview(selectedItem)}
+        onDownload={() => selectedItem && handleDownload(selectedItem)}
+        onToggleStar={() => selectedItem && handleToggleStar(selectedItem)}
+        onCopy={() => selectedItem && handleCopy(selectedItem)}
+        onCut={() => selectedItem && handleCut(selectedItem)}
+        onPaste={pasteItems}
         canPaste={clipboard.items.length > 0}
-        // Props específicas para recentes
-        isStarredPage={true} // Usar o mesmo menu simplificado
-        onGoToFile={handleGoToFile}
       />
 
-      {/* Preview de arquivo */}
-      <PopupDefault
-        isOpen={!!previewFile}
-        title={previewFile?.name}
-        onClose={() => setPreviewFile(null)}
-      >
-        {previewFile && (
-          <FilePreview path={previewFile.path} extension={previewFile.extension} />
-        )}
-      </PopupDefault>
+      {/* File Preview */}
+      {previewFile && (
+        <PopupDefault
+          isOpen={true}
+          title={`Visualizar - ${previewFile.name}`}
+          onClose={() => setPreviewFile(null)}
+        >
+          <FilePreview file={previewFile} onClose={() => setPreviewFile(null)} />
+        </PopupDefault>
+      )}
     </div>
   );
 };

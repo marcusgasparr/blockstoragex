@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { diskService, DiskInfo } from '../services/diskService';
+import { useState, useEffect } from "react";
+import { diskService, DiskInfo } from "../services/diskService";
 
 export const useSpecificDisk = (
-  mountpoint: string = 'C:\\',
-  autoRefresh: boolean = false, 
+  mountpoint: string = "G:\\",
+  autoRefresh: boolean = false,
   refreshInterval: number = 30000
 ) => {
   const [diskInfo, setDiskInfo] = useState<DiskInfo | null>(null);
@@ -13,12 +13,15 @@ export const useSpecificDisk = (
   const fetchSpecificDisk = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
+      console.log("💾 useSpecificDisk: Buscando disco:", mountpoint);
       const data = await diskService.getSpecificDisk(mountpoint);
       setDiskInfo(data);
+      console.log("✅ useSpecificDisk: Disco encontrado:", data?.mountpoint);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+      console.error("❌ useSpecificDisk: Erro ao buscar disco:", err);
+      setError(err instanceof Error ? err.message : "Erro desconhecido");
     } finally {
       setLoading(false);
     }
@@ -33,10 +36,27 @@ export const useSpecificDisk = (
     }
   }, [mountpoint, autoRefresh, refreshInterval]);
 
+  // Effect para reagir a mudanças no localStorage
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "selectedDrive" && e.newValue !== mountpoint) {
+        console.log(
+          "🔄 useSpecificDisk: Detectada mudança no localStorage do disco"
+        );
+        fetchSpecificDisk();
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [fetchSpecificDisk, mountpoint]);
+
   return {
     diskInfo,
     loading,
     error,
-    refetch: fetchSpecificDisk
+    refetch: fetchSpecificDisk,
   };
 };

@@ -3,14 +3,21 @@ import { Link, useLocation } from 'react-router-dom';
 import styles from './Sidebar.module.scss';
 import { useSpecificDisk } from '../../../../hooks/useSpecificDisk';
 
+interface SidebarProps {
+  currentDrive?: string;
+}
 
-const Sidebar: React.FC = () => {
-  // Hook para obter informações do disco
-  const { diskInfo, loading } = useSpecificDisk('C:\\');
+const Sidebar: React.FC<SidebarProps> = ({ currentDrive }) => {
+  // Hook para obter informações do disco selecionado
+  const selectedDrive = currentDrive || localStorage.getItem('selectedDrive') || 'G:\\';
+  console.log('📊 Sidebar usando disco:', selectedDrive);
+  console.log('📊 Sidebar recebeu currentDrive prop:', currentDrive);
+  
+  const { diskInfo, loading } = useSpecificDisk(selectedDrive);
 
   // Calcular porcentagem de uso
   const usagePercentage = diskInfo ? diskInfo.capacity : 0;
-  
+
   const location = useLocation(); // Saber em qual página está
 
   const navigationItems = [
@@ -19,7 +26,6 @@ const Sidebar: React.FC = () => {
     { icon: 'fas fa-star', label: 'Com estrela', path: '/favoritos' },
     // { icon: 'fas fa-trash', label: 'Lixeira', path: '/lixeira' },
   ];
-
 
   return (
     <aside className={styles.sidebar}>
@@ -34,10 +40,8 @@ const Sidebar: React.FC = () => {
         {navigationItems.map((item, index) => (
           <Link
             key={index}
-            to={item.path}  // ⭐ URL individual
-            className={`${styles.navItem} ${
-              location.pathname === item.path ? styles.active : ''
-            }`}
+            to={item.path}
+            className={`${styles.navItem} ${location.pathname === item.path ? styles.active : ''}`}
           >
             <i className={`${styles.icon} ${item.icon}`}></i>
             <span className={styles.label}>{item.label}</span>
@@ -62,12 +66,8 @@ const Sidebar: React.FC = () => {
               }}
             ></div>
           </div>
-          {/* <small>{usagePercentage}% usado</small> */}
         </div>
         <span className={styles.descriptionBtn}>Desenvolvido por Marcus Gaspar®</span>
-        {/* <button className={styles.upgradeBtn}>
-          Comprar mais armazenamento
-        </button> */}
       </div>
     </aside>
   );

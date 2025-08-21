@@ -23,6 +23,7 @@ export class FileSystemController {
       });
     }
   }
+
   static async getDirectoryContents(
     req: Request,
     res: Response

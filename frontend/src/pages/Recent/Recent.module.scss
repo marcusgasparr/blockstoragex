@@ -1,201 +1,518 @@
+@use "../../styles/variables.scss" as *;
+
 .recent {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 32px 0;
+  padding: 0 16px;
 }
 
+// Header da página
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-light);
 
   .title {
     font-size: 32px;
     font-weight: 400;
     color: var(--text-primary);
-    margin: 0;
+    margin: 0 0 8px 0;
   }
 
-  .count {
-    font-size: 16px;
-    color: var(--text-secondary);
-    background: var(--bg-secondary);
-    padding: 6px 16px;
-    border-radius: var(--border-radius);
-    font-weight: 500;
-  }
-}
-
-.filesGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
-}
-
-.fileCard {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--border-radius);
-  overflow: hidden;
-  cursor: pointer;
-  transition: var(--transition-fast);
-  position: relative;
-  box-shadow: var(--shadow-sm);
-
-  &:hover {
-    border-color: var(--border-color);
-    box-shadow: var(--shadow-md);
-
-    .moreBtn {
-      opacity: 1;
-    }
-  }
-
-  .filePreview {
-    height: 120px;
+  .headerActions {
     display: flex;
     align-items: center;
-    justify-content: center;
-    background-color: var(--bg-primary);
-    border-bottom: 1px solid var(--border-light);
-    position: relative;
+    gap: 16px;
 
-    i {
-      font-size: 48px;
-      opacity: 0.7;
-      color: var(--primary-color);
-    }
-
-    .starIcon {
-      position: absolute;
-      top: 8px;
-      right: 12px;
-      font-size: 22px;
-      color: #ffc107;
-      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-      opacity: 1;
-    }
-  }
-
-  .fileInfo {
-    padding: 12px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding-right: 40px; // Espaço para o botão de 3 pontos
-
-    .fileName {
+    .subtitle {
       font-size: 14px;
-      color: var(--text-primary);
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .fileDate {
-      font-size: 12px;
       color: var(--text-secondary);
+      margin: 0;
     }
 
-    .fileSize {
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-  }
-
-  .moreBtn {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
-    width: 28px;
-    height: 28px;
-    background: none;
-    border: none;
-    border-radius: var(--border-radius-sm);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: var(--transition-fast);
-    color: var(--text-secondary);
-
-    &:hover {
-      background: var(--bg-hover);
+    .refreshBtn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-light);
+      border-radius: var(--border-radius);
       color: var(--text-primary);
-    }
+      font-size: 13px;
+      cursor: pointer;
+      transition: var(--transition-fast);
 
-    &:active {
-      background: var(--bg-active);
-    }
+      &:hover:not(:disabled) {
+        background: var(--bg-hover);
+        border-color: var(--border-hover);
+      }
 
-    i {
-      font-size: 14px;
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      i {
+        font-size: 12px;
+      }
     }
   }
 }
 
+// Estados de carregamento, erro e vazio
 .loadingState,
-.errorState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  color: var(--text-secondary);
-
-  i {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.6;
-  }
-
-  p {
-    margin: 0 0 16px 0;
-    font-size: 16px;
-  }
-}
-
+.errorState,
 .emptyState {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: 80px 20px;
   text-align: center;
   color: var(--text-secondary);
 
   i {
     font-size: 64px;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
     opacity: 0.5;
-    color: var(--primary-color);
   }
 
-  h3 {
-    font-size: 20px;
+  p {
+    font-size: 18px;
     margin: 0 0 8px 0;
     color: var(--text-primary);
     font-weight: 500;
   }
 
-  p {
-    font-size: 16px;
-    margin: 0;
-    opacity: 0.8;
+  span {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+  }
+
+  .retryBtn {
+    padding: 10px 20px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition-fast);
+
+    &:hover {
+      background: var(--primary-hover);
+    }
+
+    &:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+    }
   }
 }
 
+.loadingState i {
+  color: var(--primary-color);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.errorState i {
+  color: #dc3545;
+}
+
+.emptyState i {
+  color: var(--text-muted);
+}
+
+// Lista de arquivos
+.filesList {
+  display: grid;
+  gap: 8px;
+}
+
+.fileItem {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--bg-secondary);
+  border: 2px solid transparent;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  position: relative;
+
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  &.selected {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    box-shadow: 0 4px 16px rgba(0, 123, 255, 0.3);
+
+    .fileIcon i {
+      color: white !important;
+    }
+
+    .fileName {
+      color: white;
+    }
+
+    .filePath {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .fileSize,
+    .fileDate {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .actionBtn {
+      color: white;
+      border-color: rgba(255, 255, 255, 0.3);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+    }
+  }
+
+  // Ícone do arquivo
+  .fileIcon {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-light);
+
+    i {
+      font-size: 24px;
+      color: var(--primary-color);
+    }
+
+    .starIcon {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      font-size: 12px;
+      color: #ffc107;
+      background: var(--bg-primary);
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border-light);
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    }
+  }
+
+  // Informações do arquivo
+  .fileInfo {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .fileName {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .filePath {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: 0;
+      font-family: 'Consolas', 'Monaco', monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .fileDetails {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 2px;
+
+      .fileSize {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 500;
+      }
+
+      .fileDate {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+    }
+  }
+
+  // Ações do arquivo
+  .fileActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transition: var(--transition-fast);
+
+    .actionBtn {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border-light);
+      background: var(--bg-primary);
+      border-radius: var(--border-radius);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition-fast);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+
+      &:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+        border-color: var(--border-hover);
+        transform: scale(1.05);
+      }
+
+      &:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+      }
+    }
+  }
+
+  &:hover .fileActions {
+    opacity: 1;
+  }
+
+  &.selected .fileActions {
+    opacity: 1;
+  }
+}
+
+// Animações
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fileItem {
+  animation: fadeIn 0.3s ease-out;
+}
+
+// Responsividade
 @media (max-width: 768px) {
+  .recent {
+    padding: 0 12px;
+  }
+
   .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+
     .title {
       font-size: 24px;
     }
+
+    .headerActions {
+      justify-content: space-between;
+      align-items: center;
+    }
   }
-  .filesGrid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+
+  .fileItem {
+    padding: 12px 16px;
+    gap: 12px;
+
+    .fileIcon {
+      width: 40px;
+      height: 40px;
+
+      i {
+        font-size: 20px;
+      }
+    }
+
+    .fileInfo {
+      .fileName {
+        font-size: 15px;
+      }
+
+      .filePath {
+        font-size: 11px;
+      }
+
+      .fileDetails {
+        gap: 8px;
+
+        .fileSize,
+        .fileDate {
+          font-size: 11px;
+        }
+      }
+    }
+
+    .fileActions {
+      opacity: 1; // Sempre visível no mobile
+
+      .actionBtn {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+      }
+    }
+  }
+
+  .loadingState,
+  .errorState,
+  .emptyState {
+    padding: 60px 20px;
+
+    i {
+      font-size: 48px;
+    }
+
+    p {
+      font-size: 16px;
+    }
+
+    span {
+      font-size: 13px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .fileItem {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 8px;
+
+    .fileActions {
+      grid-column: 1 / -1;
+      justify-self: end;
+      margin-top: 8px;
+    }
+
+    .fileInfo {
+      .filePath {
+        display: none; // Ocultar path em telas muito pequenas
+      }
+    }
+  }
+
+  .header {
+    .headerActions {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+
+      .refreshBtn {
+        align-self: flex-end;
+      }
+    }
+  }
+}
+
+// Estados especiais para diferentes tipos de arquivo
+.fileItem {
+  .fileIcon {
+    i.fa-file-pdf {
+      color: #dc3545;
+    }
+
+    i.fa-file-image {
+      color: #28a745;
+    }
+
+    i.fa-file-video {
+      color: #fd7e14;
+    }
+
+    i.fa-file-word {
+      color: #007bff;
+    }
+
+    i.fa-file-excel {
+      color: #198754;
+    }
+
+    i.fa-file-powerpoint {
+      color: #dc3545;
+    }
+
+    i.fa-file-archive {
+      color: #6f42c1;
+    }
+
+    i.fa-file-code {
+      color: #0d6efd;
+    }
+
+    i.fa-file-audio {
+      color: #e83e8c;
+    }
+  }
+}
+
+// Hover effects suaves
+.fileItem:hover {
+  .fileIcon {
+    transform: scale(1.05);
+  }
+
+  .fileName {
+    color: var(--primary-color);
+  }
+}
+
+.fileItem.selected:hover {
+  .fileName {
+    color: white;
   }
 }

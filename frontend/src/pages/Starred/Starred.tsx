@@ -7,8 +7,15 @@ import FilePreview from "../../components/FilePreview/FilePreview";
 import PopupDefault from "../../layouts/LayoutDefault/PopupDefault";
 import { FileSystemItem } from "../../services/fileSystemService";
 
-const Starred: React.FC = () => {
+interface StarredProps {
+  currentDrive?: string;
+}
+
+const Starred: React.FC<StarredProps> = ({ currentDrive }) => {
   const navigate = useNavigate();
+  const selectedDrive = currentDrive || localStorage.getItem('selectedDrive') || 'G:\\';
+  console.log('⭐ Starred usando disco:', selectedDrive);
+  
   const [starredFiles, setStarredFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +39,7 @@ const Starred: React.FC = () => {
     copyItems,
     cutItems,
     pasteItems
-  } = useFileSystem("H:\\");
+  } = useFileSystem(selectedDrive);
 
   const fetchStarred = async () => {
     setLoading(true);
@@ -42,10 +49,12 @@ const Starred: React.FC = () => {
       const timeoutPromise = new Promise((_, reject) => {
         timeoutId = window.setTimeout(() => reject(new Error("Tempo limite excedido ao buscar favoritos.")), 10000);
       });
-      const resultPromise = getAllStarredItems("H:\\");
+      const resultPromise = getAllStarredItems(selectedDrive);
       const result = await Promise.race([resultPromise, timeoutPromise]);
       setStarredFiles(result as any[]);
+      console.log('⭐ Favoritos carregados:', (result as any[]).length, 'itens');
     } catch (err: any) {
+      console.error('❌ Erro ao buscar favoritos:', err);
       setError(err.message || "Erro ao buscar arquivos favoritos.");
       setStarredFiles([]);
     } finally {
@@ -56,232 +65,243 @@ const Starred: React.FC = () => {
 
   useEffect(() => {
     fetchStarred();
-  }, [refreshTrigger]);
+  }, [refreshTrigger, selectedDrive]);
 
   // Handler para favoritar/desfavoritar e atualizar favoritos
-  const handleToggleStar = async (itemPath?: string) => {
+  const handleToggleStar = async (itemPath: string) => {
     try {
-      const pathToToggle = itemPath || selectedItem?.path;
-      if (!pathToToggle) return;
+      await toggleStar(itemPath);
+      // Forçar atualização da lista
+      setRefreshTrigger(prev => prev + 1);
+    } catch (err) {
+      console.error('Erro ao alterar favorito:', err);
+    }
+    closeContextMenu();
+  };
 
-      const isStarred = await toggleStar(pathToToggle);
-      console.log('Status de favorito atualizado');
-      setRefreshTrigger(t => t + 1);
-      closeContextMenu();
+  const handleItemClick = (item: FileSystemItem) => {
+    setSelectedItem(item);
+    setSelectedItems(new Set([item.path]));
+  };
 
-      // Se foi desfavoritado, o item sumirá da lista
-    } catch (error) {
-      console.error('Erro ao atualizar favorito:', error);
+  const handleItemDoubleClick = (item: FileSystemItem) => {
+    if (item.type === 'file') {
+      setPreviewFile(item);
+    } else {
+      // Navegar para a pasta no MyDrive
+      navigate(`/?path=${encodeURIComponent(item.path)}`);
     }
   };
 
-  // Handlers do menu de contexto
-  const handleContextMenu = (e: React.MouseEvent, item: FileSystemItem) => {
-    e.preventDefault();
+  const handleContextMenu = (event: React.MouseEvent, item: FileSystemItem) => {
+    event.preventDefault();
     setSelectedItem(item);
+    setSelectedItems(new Set([item.path]));
     setContextMenu({
       isOpen: true,
-      position: { x: e.clientX, y: e.clientY }
+      position: { x: event.clientX, y: event.clientY }
     });
   };
 
   const closeContextMenu = () => {
     setContextMenu({ isOpen: false, position: { x: 0, y: 0 } });
-    setSelectedItem(null);
   };
 
-  const handleGoToFile = () => {
-    if (!selectedItem) return;
-
-    // Navegar para o diretório pai do arquivo
-    const pathParts = selectedItem.path.split('\\');
-    pathParts.pop();
-    const parentPath = pathParts.join('\\');
-
-    // Navegar para MyDrive com o caminho específico e selecionar o arquivo
-    navigate(`/?path=${encodeURIComponent(parentPath)}&selected=${encodeURIComponent(selectedItem.path)}`);
+  const handlePreview = (item: FileSystemItem) => {
+    setPreviewFile(item);
     closeContextMenu();
   };
 
-  const handleSelectMode = () => {
-    if (!selectedItem) return;
-    // Selecionar o item atual
-    setSelectedItems(new Set([selectedItem.path]));
+  const handleDownload = (item: FileSystemItem) => {
+    window.open(`http://localhost:3001/api/files/download?path=${encodeURIComponent(item.path)}`, '_blank');
     closeContextMenu();
   };
 
-  const handleCopy = () => {
-    if (!selectedItem) return;
-    copyItems([selectedItem]);
+  const handleCopy = (item: FileSystemItem) => {
+    copyItems([item]);
     closeContextMenu();
   };
 
-  const handleCut = () => {
-    if (!selectedItem) return;
-    cutItems([selectedItem]);
+  const handleCut = (item: FileSystemItem) => {
+    cutItems([item]);
     closeContextMenu();
   };
 
-  const handlePaste = async () => {
-    if (clipboard.items.length === 0) return;
-
-    try {
-      await pasteItems();
-      setRefreshTrigger(t => t + 1);
-    } catch (error) {
-      console.error('Erro ao colar:', error);
-    }
+  const handleGoToLocation = (item: FileSystemItem) => {
+    const parentPath = item.path.substring(0, item.path.lastIndexOf('\\'));
+    navigate(`/?path=${encodeURIComponent(parentPath)}`);
     closeContextMenu();
   };
 
-  const handleDownload = async () => {
-    if (!selectedItem) return;
+  if (loading) {
+    return (
+      <div className={styles.starred}>
+        <div className={styles.header}>
+          <h1 className={styles.title}>Arquivos Favoritos</h1>
+        </div>
+        <div className={styles.loadingState}>
+          <i className="fas fa-spinner fa-spin"></i>
+          <p>Carregando arquivos favoritos...</p>
+        </div>
+      </div>
+    );
+  }
 
-    try {
-      if (selectedItem.type === 'file') {
-        // Download de arquivo
-        const response = await fetch(`http://localhost:3001/api/files/download?path=${encodeURIComponent(selectedItem.path)}`);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = selectedItem.name;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      } else if (selectedItem.type === 'directory') {
-        // Download de pasta como zip
-        const response = await fetch(`http://localhost:3001/api/files/download-folder?path=${encodeURIComponent(selectedItem.path)}`);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = selectedItem.name + '.zip';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      }
-    } catch (error) {
-      console.error('Erro ao fazer download:', error);
-      alert('Erro ao fazer download do arquivo.');
-    }
-    closeContextMenu();
-  };
-
-  const handleDoubleClick = (item: FileSystemItem) => {
-    if (item.type === 'directory') {
-      // Navegar para a pasta
-      navigate(`/?path=${encodeURIComponent(item.path)}`);
-    } else {
-      // Abrir preview do arquivo
-      setPreviewFile(item);
-    }
-  };
+  if (error) {
+    return (
+      <div className={styles.starred}>
+        <div className={styles.header}>
+          <h1 className={styles.title}>Arquivos Favoritos</h1>
+        </div>
+        <div className={styles.errorState}>
+          <i className="fas fa-exclamation-triangle"></i>
+          <p>Erro: {error}</p>
+          <button onClick={fetchStarred} className={styles.retryBtn}>
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.starred}>
       <div className={styles.header}>
-        <h1 className={styles.title}>Favoritos</h1>
-        <span className={styles.count}>{starredFiles.length} arquivos</span>
+        <h1 className={styles.title}>Arquivos Favoritos</h1>
+        <div className={styles.headerActions}>
+          <p className={styles.subtitle}>
+            {starredFiles.length} {starredFiles.length === 1 ? 'item favorito' : 'itens favoritos'} no disco {selectedDrive}
+          </p>
+          <button onClick={fetchStarred} className={styles.refreshBtn} disabled={loading}>
+            <i className="fas fa-sync-alt"></i>
+            Atualizar
+          </button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className={styles.loadingState}>
-          <i className="fas fa-spinner fa-spin"></i>
-          <p>Carregando arquivos...</p>
-        </div>
-      ) : error ? (
-        <div className={styles.errorState}>
-          <i className="fas fa-exclamation-triangle"></i>
-          <p>{error}</p>
+      {starredFiles.length === 0 ? (
+        <div className={styles.emptyState}>
+          <i className="fas fa-star"></i>
+          <p>Nenhum arquivo favorito encontrado</p>
+          <span>Adicione arquivos e pastas aos favoritos para vê-los aqui</span>
         </div>
       ) : (
-        <div className={styles.filesGrid}>
-          {starredFiles.length === 0 ? (
-            <div className={styles.emptyState}>
-              <i className="fas fa-star"></i>
-              <h3>Nenhum arquivo favoritado</h3>
-              <p>Adicione arquivos aos favoritos para vê-los aqui</p>
-            </div>
-          ) : (
-            starredFiles.map((item) => (
-              <div
-                key={item.path}
-                className={`${styles.fileCard} ${selectedItems.has(item.path) ? styles.selected : ''}`}
-                onDoubleClick={() => handleDoubleClick(item)}
-                onContextMenu={(e) => handleContextMenu(e, item)}
-              >
-                <div className={styles.fileIcon}>
-                  <i
-                    className={item.icon}
-                    style={{
-                      color: item.type === 'directory' && item.folderColor
-                        ? item.folderColor
-                        : undefined
+        <div className={styles.starredGrid}>
+          {starredFiles.map((item, index) => (
+            <div
+              key={item.path}
+              className={`${styles.starredItem} ${selectedItems.has(item.path) ? styles.selected : ''}`}
+              onClick={() => handleItemClick(item)}
+              onDoubleClick={() => handleItemDoubleClick(item)}
+              onContextMenu={(e) => handleContextMenu(e, item)}
+            >
+              <div className={styles.itemIcon}>
+                <i
+                  className={`${item.icon} ${item.type === 'directory' ? styles.folderIcon : styles.fileIcon}`}
+                  style={{
+                    color: item.type === 'directory' && item.folderColor
+                      ? item.folderColor
+                      : undefined
+                  }}
+                ></i>
+                <i className={`fas fa-star ${styles.starIcon}`}></i>
+              </div>
+
+              <div className={styles.itemInfo}>
+                <h3 className={styles.itemName} title={item.name}>
+                  {item.name}
+                </h3>
+                <p className={styles.itemPath} title={item.path}>
+                  {item.path}
+                </p>
+                <div className={styles.itemDetails}>
+                  <span className={styles.itemType}>
+                    {item.type === 'directory' ? 'Pasta' : 'Arquivo'}
+                  </span>
+                  {item.type === 'file' && (
+                    <>
+                      <span className={styles.itemSize}>
+                        {formatFileSize(item.size)}
+                      </span>
+                      <span className={styles.itemDate}>
+                        {formatDate(item.modified)}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className={styles.itemActions}>
+                {item.type === 'file' && (
+                  <button
+                    className={styles.actionBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePreview(item);
                     }}
-                  ></i>
-                  <i className={`fas fa-star ${styles.starIcon}`}></i>
-                </div>
-                <div className={styles.fileInfo}>
-                  <span className={styles.fileName} title={item.name}>
-                    {item.name}
-                  </span>
-                  <span className={styles.fileSize}>
-                    {item.type === 'file' ? formatFileSize(item.size) : 'Pasta'}
-                  </span>
-                  <span className={styles.fileDate}>
-                    {formatDate(item.modified)}
-                  </span>
-                </div>
+                    title="Visualizar"
+                  >
+                    <i className="fas fa-eye"></i>
+                  </button>
+                )}
                 <button
-                  className={styles.moreBtn}
+                  className={styles.actionBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleStar(item.path);
+                  }}
+                  title="Remover dos favoritos"
+                >
+                  <i className="fas fa-star"></i>
+                </button>
+                <button
+                  className={styles.actionBtn}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleContextMenu(e, item);
                   }}
+                  title="Mais opções"
                 >
                   <i className="fas fa-ellipsis-v"></i>
                 </button>
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Menu de contexto específico para favoritos */}
+      {/* Context Menu */}
       <ContextMenu
         isOpen={contextMenu.isOpen}
         position={contextMenu.position}
         onClose={closeContextMenu}
         selectedItems={selectedItem ? [selectedItem] : []}
-        onCopy={handleCopy}
-        onCut={handleCut}
-        onPaste={handlePaste}
-        onDelete={() => { }} // Não permite excluir na página de favoritos
-        onRename={() => { }} // Não permite renomear na página de favoritos
-        onCreateFolder={() => { }} // Não permite criar pasta na página de favoritos
-        onToggleStar={() => handleToggleStar()}
-        onSetFolderColor={() => { }} // Não permite alterar cor na página de favoritos
-        onDownload={handleDownload}
-        onSelectMode={handleSelectMode}
+        onPreview={selectedItem?.type === 'file' ? () => selectedItem && handlePreview(selectedItem) : undefined}
+        onDownload={selectedItem?.type === 'file' ? () => selectedItem && handleDownload(selectedItem) : undefined}
+        onToggleStar={() => selectedItem && handleToggleStar(selectedItem.path)}
+        onCopy={() => selectedItem && handleCopy(selectedItem)}
+        onCut={() => selectedItem && handleCut(selectedItem)}
+        onPaste={pasteItems}
         canPaste={clipboard.items.length > 0}
-        // Props específicas para favoritos
-        isStarredPage={true}
-        onGoToFile={handleGoToFile}
+        extraActions={[
+          {
+            label: 'Ir para localização',
+            icon: 'fas fa-map-marker-alt',
+            action: () => selectedItem && handleGoToLocation(selectedItem)
+          }
+        ]}
       />
 
-      {/* Preview de arquivo */}
-      <PopupDefault
-        isOpen={!!previewFile}
-        title={previewFile?.name}
-        onClose={() => setPreviewFile(null)}
-      >
-        {previewFile && (
-          <FilePreview path={previewFile.path} extension={previewFile.extension} />
-        )}
-      </PopupDefault>
+      {/* File Preview */}
+      {previewFile && (
+        <PopupDefault
+          isOpen={true}
+          title={`Visualizar - ${previewFile.name}`}
+          onClose={() => setPreviewFile(null)}
+        >
+          <FilePreview file={previewFile} onClose={() => setPreviewFile(null)} />
+        </PopupDefault>
+      )}
     </div>
   );
 };

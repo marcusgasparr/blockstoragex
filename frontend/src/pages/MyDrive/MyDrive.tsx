@@ -13,7 +13,10 @@ interface MyDriveProps {
   currentDrive?: string;
 }
 
-const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive = 'H:\\' }) => {
+const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive }) => {
+  const effectiveDrive = currentDrive || localStorage.getItem('selectedDrive') || 'G:\\';
+  console.log('🏠 MyDrive usando disco:', effectiveDrive);
+
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Estados para busca global
@@ -46,7 +49,7 @@ const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive = 'H:\
     setFolderColor,
     formatFileSize,
     formatDate
-  } = useFileSystem(currentDrive);
+  } = useFileSystem(effectiveDrive);
 
   // Estados do componente
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -68,6 +71,15 @@ const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive = 'H:\
   const [previewFile, setPreviewFile] = useState<FileSystemItem | null>(null);
   const [selectMode, setSelectMode] = useState(false);
 
+  // Effect para reagir a mudanças no currentDrive
+  useEffect(() => {
+    if (currentDrive) {
+      console.log('🔄 MyDrive: currentDrive mudou, recarregando...', currentDrive);
+      // Forçar navegação para o novo disco
+      navigateToDirectory(currentDrive);
+    }
+  }, [currentDrive, navigateToDirectory]);
+
   // Função para busca global
   const performGlobalSearch = async (query: string) => {
     if (!query.trim()) {
@@ -78,7 +90,7 @@ const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive = 'H:\
 
     setIsSearching(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/files/search?query=${encodeURIComponent(query)}&rootPath=${encodeURIComponent(currentDrive)}`);
+      const response = await fetch(`http://localhost:3001/api/files/search?query=${encodeURIComponent(query)}&rootPath=${encodeURIComponent(effectiveDrive)}`);
       const data = await response.json();
 
       if (data.success) {
@@ -126,162 +138,94 @@ const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive = 'H:\
     }
 
     // Filtro por tipo
-    switch (type) {
-      case 'files':
-        filtered = filtered.filter(item => item.type === 'file');
-        break;
-      case 'folders':
-        filtered = filtered.filter(item => item.type === 'directory');
-        break;
-      case 'images':
-        filtered = filtered.filter(item =>
-          item.extension && ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp'].includes(item.extension)
-        );
-        break;
-      case 'documents':
-        filtered = filtered.filter(item =>
-          item.extension && ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt'].includes(item.extension)
-        );
-        break;
-      case 'videos':
-        filtered = filtered.filter(item =>
-          item.extension && ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm'].includes(item.extension)
-        );
-        break;
-      case 'audio':
-        filtered = filtered.filter(item =>
-          item.extension && ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.wma'].includes(item.extension)
-        );
-        break;
+    if (type !== 'all') {
+      filtered = filtered.filter(item => {
+        switch (type) {
+          case 'files':
+            return item.type === 'file';
+          case 'folders':
+            return item.type === 'directory';
+          case 'images':
+            return item.extension && ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg'].includes(item.extension);
+          case 'documents':
+            return item.extension && ['.pdf', '.doc', '.docx', '.txt', '.xls', '.xlsx', '.ppt', '.pptx'].includes(item.extension);
+          case 'videos':
+            return item.extension && ['.mp4', '.avi', '.mov', '.wmv', '.mkv'].includes(item.extension);
+          case 'audio':
+            return item.extension && ['.mp3', '.wav', '.flac', '.aac'].includes(item.extension);
+          default:
+            return true;
+        }
+      });
     }
 
     return filtered;
   };
 
-  // Função para limpar busca
-  const clearSearch = () => {
-    setSearchQuery('');
-    setIsGlobalSearch(false);
-    setGlobalSearchResults([]);
+  // Effect para filtrar itens quando mudam os critérios
+  useEffect(() => {
+    const itemsToFilter = isGlobalSearch ? globalSearchResults : directoryContent?.items || [];
+    const filtered = filterItems(itemsToFilter, searchQuery, typeFilter);
+    setFilteredItems(filtered);
+  }, [directoryContent, globalSearchResults, searchQuery, typeFilter, isGlobalSearch]);
 
-    const newParams = new URLSearchParams(searchParams);
-    newParams.delete('search');
-    newParams.delete('globalSearch');
-    setSearchParams(newParams);
-  };
-
-  // Registrar callback de busca para o TopBar
+  // Effect para registrar callback de busca
   useEffect(() => {
     if (onSearchCallback) {
-      onSearchCallback(handleSearch);
+      onSearchCallback(performGlobalSearch);
     }
   }, [onSearchCallback]);
 
-  // useEffect para aplicar filtros
+  // Effect para verificar parâmetros da URL ao carregar
   useEffect(() => {
-    if (isGlobalSearch) {
-      const filtered = filterItems(globalSearchResults, searchQuery, typeFilter);
-      setFilteredItems(filtered);
-    } else if (directoryContent) {
-      const filtered = filterItems(directoryContent.items, searchQuery, typeFilter);
-      setFilteredItems(filtered);
-    }
-  }, [directoryContent, globalSearchResults, searchQuery, typeFilter, isGlobalSearch]);
-
-  // useEffect para lidar com parâmetros da URL
-  useEffect(() => {
-    const pathParam = searchParams.get('path');
-    const selectedParam = searchParams.get('selected');
     const searchParam = searchParams.get('search');
     const globalSearchParam = searchParams.get('globalSearch');
 
-    // Navegação por pasta
-    if (pathParam && pathParam !== currentPath) {
-      navigateToDirectory(pathParam);
-    }
-
-    // Busca local
-    if (searchParam && !globalSearchParam) {
-      setSearchQuery(searchParam);
-      setIsGlobalSearch(false);
-    }
-
-    // Busca global
     if (globalSearchParam) {
-      setSearchQuery(globalSearchParam);
       performGlobalSearch(globalSearchParam);
+    } else if (searchParam) {
+      setSearchQuery(searchParam);
+    }
+  }, []);
+
+  // Effect para mostrar PasteBar quando há itens no clipboard
+  useEffect(() => {
+    setShowPasteBar(clipboard.items.length > 0);
+  }, [clipboard]);
+
+  // Handlers para ações
+  const handleItemClick = (item: FileSystemItem, index: number, event?: React.MouseEvent) => {
+    if (selectMode) {
+      selectItem(item.path, index, event);
+      return;
     }
 
-    // Se não há busca, limpar estados
-    if (!searchParam && !globalSearchParam && searchQuery) {
-      setSearchQuery('');
-      setIsGlobalSearch(false);
-      setGlobalSearchResults([]);
-    }
-
-    // Após navegar, selecionar o arquivo específico se fornecido
-    if (selectedParam && directoryContent && !isGlobalSearch) {
-      setTimeout(() => {
-        const itemIndex = directoryContent.items.findIndex(item => item.path === selectedParam);
-        if (itemIndex !== -1) {
-          selectItem(selectedParam, itemIndex);
-
-          const itemElement = document.querySelector(`[data-path="${selectedParam}"]`);
-          if (itemElement) {
-            itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }
-      }, 100);
-    }
-  }, [searchParams, currentPath, directoryContent, selectItem]);
-
-  // Função para baixar arquivo/pasta
-  const handleDownload = async () => {
-    const items = getSelectedItemsData();
-    if (items.length === 0) return alert('Selecione ao menos um item para baixar.');
-
-    for (const item of items) {
-      if (item.type === 'file') {
-        // Download de arquivo
-        const response = await fetch(`http://localhost:3001/api/files/download?path=${encodeURIComponent(item.path)}`);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = item.name;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      } else if (item.type === 'directory') {
-        // Download de pasta como zip
-        const response = await fetch(`http://localhost:3001/api/files/download-folder?path=${encodeURIComponent(item.path)}`);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = item.name + '.zip';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
+    if (event?.detail === 2) { // Double click
+      if (item.type === 'directory') {
+        navigateToDirectory(item.path);
+      } else {
+        setPreviewFile(item);
       }
+    } else {
+      selectItem(item.path, index, event);
     }
-    closeContextMenu();
   };
 
-  // Handlers do menu de contexto
-  const handleContextMenu = (e: React.MouseEvent, itemPath?: string) => {
-    e.preventDefault();
+  const handleContextMenu = (event: React.MouseEvent, itemPath: string) => {
+    event.preventDefault();
 
-    // Se clicou em um item específico e ele não está selecionado, seleciona ele
-    if (itemPath && !selectedItems.has(itemPath)) {
-      selectItem(itemPath, 0);
+    // Selecionar o item se não estiver selecionado
+    if (!selectedItems.has(itemPath)) {
+      const item = directoryContent?.items.find(i => i.path === itemPath);
+      const index = directoryContent?.items.findIndex(i => i.path === itemPath) || 0;
+      if (item) {
+        selectItem(item.path, index);
+      }
     }
 
     setContextMenu({
       isOpen: true,
-      position: { x: e.clientX, y: e.clientY }
+      position: { x: event.clientX, y: event.clientY }
     });
   };
 
@@ -289,152 +233,28 @@ const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive = 'H:\
     setContextMenu({ isOpen: false, position: { x: 0, y: 0 } });
   };
 
-  // Handlers das ações
-  const handleCopy = () => {
-    const items = getSelectedItemsData();
-    if (items.length === 0) {
-      console.warn('Nenhum item selecionado para copiar');
-      return;
-    }
-
-    copyItems(items);
-    setShowPasteBar(true);
-    console.log('Copiado:', items.map(i => i.name));
-  };
-
-  const handleCut = () => {
-    const items = getSelectedItemsData();
-    if (items.length === 0) {
-      console.warn('Nenhum item selecionado para recortar');
-      return;
-    }
-
-    cutItems(items);
-    setShowPasteBar(true);
-    console.log('Recortado:', items.map(i => i.name));
-  };
-
-  const handlePaste = async () => {
-    if (clipboard.items.length === 0) {
-      console.warn('Nenhum item na área de transferência');
-      return;
-    }
-
-    try {
-      const success = await pasteItems();
-      setShowPasteBar(false);
-
-      if (success) {
-        console.log('Itens colados com sucesso');
-        refresh();
-      } else {
-        console.error('Falha ao colar itens');
-      }
-    } catch (error) {
-      console.error('Erro ao colar:', error);
-    }
-  };
-
-  const handleDelete = async () => {
-    const items = getSelectedItemsData();
-    if (items.length === 0) {
-      console.warn('Nenhum item selecionado para excluir');
-      return;
-    }
-
-    const confirmMessage = items.length === 1
-      ? `Tem certeza que deseja excluir "${items[0].name}"?`
-      : `Tem certeza que deseja excluir ${items.length} itens?`;
-
-    if (confirm(confirmMessage)) {
-      try {
-        await deleteSelectedItems();
-        console.log('Itens excluídos com sucesso');
-        refresh();
-      } catch (error) {
-        console.error('Erro ao excluir:', error);
-        alert('Erro ao excluir itens. Verifique as permissões.');
-      }
-    }
-  };
-
-  const handleRename = () => {
-    const items = getSelectedItemsData();
-    if (items.length !== 1) {
-      console.warn('Selecione apenas um item para renomear');
-      return;
-    }
-
-    setIsRenaming(items[0].path);
-    setNewName(items[0].name);
-  };
-
-  const handleCreateFolder = async () => {
+  const handleNewFolder = async () => {
     const name = prompt('Nome da nova pasta:');
-    if (name && name.trim()) {
-      try {
-        await createDirectory(name.trim());
-        console.log('Pasta criada:', name);
-        refresh();
-      } catch (error) {
-        console.error('Erro ao criar pasta:', error);
-        alert('Erro ao criar pasta. Verifique as permissões.');
-      }
+    if (name) {
+      await createDirectory(name);
     }
+    closeContextMenu();
   };
 
-  const handleToggleStar = async () => {
-    const items = getSelectedItemsData();
-    if (items.length !== 1) {
-      console.warn('Selecione apenas um item para favoritar');
-      return;
+  const handleRename = (itemPath: string) => {
+    const item = directoryContent?.items.find(i => i.path === itemPath);
+    if (item) {
+      setIsRenaming(itemPath);
+      setNewName(item.name);
     }
-
-    try {
-      await toggleStar(items[0].path);
-      console.log('Status de favorito atualizado para:', items[0].name);
-      refresh();
-    } catch (error) {
-      console.error('Erro ao atualizar favorito:', error);
-      alert('Erro ao atualizar favorito.');
-    }
-  };
-
-  const handleSetFolderColor = async (color: string) => {
-    const items = getSelectedItemsData();
-    if (items.length !== 1 || items[0].type !== 'directory') {
-      console.warn('Selecione apenas uma pasta para mudar a cor');
-      return;
-    }
-
-    try {
-      await setFolderColor(items[0].path, color);
-      console.log('Cor da pasta atualizada:', items[0].name, color);
-      refresh();
-    } catch (error) {
-      console.error('Erro ao definir cor da pasta:', error);
-      alert('Erro ao definir cor da pasta.');
-    }
-  };
-
-  const handleSelectMode = () => {
-    const items = getSelectedItemsData();
-
-    if (items.length === 0) {
-      console.warn('Nenhum item para selecionar');
-      return;
-    }
-
-    setSelectMode(true);
-    console.log('Modo seleção ativado com:', items[0].name);
+    closeContextMenu();
   };
 
   const confirmRename = async () => {
     if (isRenaming && newName.trim()) {
       await renameItem(isRenaming, newName.trim());
-      setIsRenaming(null);
-      setNewName('');
     }
+    cancelRename();
   };
 
   const cancelRename = () => {
@@ -442,278 +262,212 @@ const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive = 'H:\
     setNewName('');
   };
 
-  const handleCancelPaste = () => {
-    setShowPasteBar(false);
-  };
-
-  // Função para navegar para o diretório de um item da busca global
-  const handleGoToItemLocation = (item: FileSystemItem) => {
-    if (item.type === 'directory') {
-      // Se é pasta, navegar para ela
-      setSearchParams(new URLSearchParams({ path: item.path }));
-    } else {
-      // Se é arquivo, navegar para o diretório pai e selecionar o arquivo
-      const pathParts = item.path.split('\\');
-      pathParts.pop();
-      const parentPath = pathParts.join('\\');
-      setSearchParams(new URLSearchParams({
-        path: parentPath,
-        selected: item.path
-      }));
+  const handleDelete = async () => {
+    if (selectedItems.size > 0 && confirm(`Excluir ${selectedItems.size} item(s)?`)) {
+      await deleteSelectedItems();
     }
+    closeContextMenu();
   };
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Verificar se o foco está em um input
-      const activeElement = document.activeElement;
-      const isInputFocused = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
+  const handleCopy = () => {
+    const items = getSelectedItemsData();
+    copyItems(items);
+    closeContextMenu();
+  };
 
-      if (isInputFocused) {
-        // Se está em um input, não processar shortcuts
-        return;
-      }
+  const handleCut = () => {
+    const items = getSelectedItemsData();
+    cutItems(items);
+    closeContextMenu();
+  };
 
-      if (e.ctrlKey && e.key === 'a') {
-        e.preventDefault();
-        selectAll();
-      } else if (e.key === 'Delete') {
-        if (selectedItems.size > 0) {
-          handleDelete();
-        }
-      } else if (e.key === 'F2') {
-        if (selectedItems.size === 1) {
-          handleRename();
-        }
-      } else if (e.ctrlKey && e.key === 'c') {
-        if (selectedItems.size > 0) {
-          handleCopy();
-        }
-      } else if (e.ctrlKey && e.key === 'x') {
-        if (selectedItems.size > 0) {
-          handleCut();
-        }
-      } else if (e.ctrlKey && e.key === 'v') {
-        if (clipboard.items.length > 0) {
-          handlePaste();
-        }
-      } else if (e.key === 'Escape') {
-        if (isGlobalSearch || searchQuery) {
-          clearSearch();
-        }
-      }
-    };
+  const handlePaste = async () => {
+    await pasteItems();
+    closeContextMenu();
+  };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedItems, clipboard, selectAll, handleDelete, handleRename, handleCopy, handleCut, handlePaste, isGlobalSearch, searchQuery]);
+  const handleToggleStar = async (itemPath: string) => {
+    await toggleStar(itemPath);
+    closeContextMenu();
+  };
 
-  // Determinar qual conjunto de itens usar
-  const currentItems = isGlobalSearch ? globalSearchResults : (directoryContent?.items || []);
-  const totalItems = isGlobalSearch ? globalSearchResults.length : (directoryContent?.totalItems || 0);
+  const handleSetColor = async (itemPath: string, color: string) => {
+    await setFolderColor(itemPath, color);
+    closeContextMenu();
+  };
+
+  const handlePreview = (item: FileSystemItem) => {
+    setPreviewFile(item);
+    closeContextMenu();
+  };
+
+  const handleDownload = (item: FileSystemItem) => {
+    window.open(`http://localhost:3001/api/files/download?path=${encodeURIComponent(item.path)}`, '_blank');
+    closeContextMenu();
+  };
+
+  // Breadcrumb para navegação
+  const renderBreadcrumb = () => {
+    if (!currentPath) return null;
+
+    const parts = currentPath.split('\\').filter(part => part);
+    const breadcrumbItems = [];
+
+    let currentPathBuild = '';
+    for (const part of parts) {
+      currentPathBuild += part + '\\';
+      breadcrumbItems.push({
+        name: part,
+        path: currentPathBuild
+      });
+    }
+
+    return (
+      <div className={styles.breadcrumb}>
+        {breadcrumbItems.map((item, index) => (
+          <React.Fragment key={item.path}>
+            <button
+              className={styles.breadcrumbItem}
+              onClick={() => navigateToDirectory(item.path)}
+            >
+              {item.name}
+            </button>
+            {index < breadcrumbItems.length - 1 && (
+              <i className={`fas fa-chevron-right ${styles.breadcrumbSeparator}`}></i>
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className={styles.home}>
+    <div className={styles.myDrive}>
+      {/* Header */}
       <div className={styles.header}>
-        <h1 className={styles.title}>
-          {isGlobalSearch ? `Resultados da busca: "${searchQuery}"` : 'Meu Drive'}
-        </h1>
-        <div className={styles.viewControls}>
-          <button
-            className={`${styles.viewBtn} ${viewMode === 'list' ? styles.active : ''}`}
-            onClick={() => setViewMode('list')}
-          >
-            <i className="fas fa-list"></i>
-          </button>
-          <button
-            className={`${styles.viewBtn} ${viewMode === 'grid' ? styles.active : ''}`}
-            onClick={() => setViewMode('grid')}
-          >
-            <i className="fas fa-th"></i>
-          </button>
+        <div className={styles.titleSection}>
+          <h1 className={styles.title}>
+            {isGlobalSearch ? `Resultados da busca` : 'Meu Drive'}
+          </h1>
+          {renderBreadcrumb()}
+        </div>
+
+        <div className={styles.controls}>
+          {/* Filtros */}
+          <div className={styles.filterSection}>
+            <div className={styles.searchLocal}>
+              <input
+                type="text"
+                placeholder="Filtrar nesta pasta..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={styles.searchInput}
+              />
+            </div>
+
+            <div className={styles.typeFilter}>
+              <button
+                className={styles.filterBtn}
+                onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+              >
+                <i className="fas fa-filter"></i>
+                Tipo
+                <i className="fas fa-chevron-down"></i>
+              </button>
+
+              {showTypeDropdown && (
+                <div className={styles.typeDropdown}>
+                  <button onClick={() => { setTypeFilter('all'); setShowTypeDropdown(false); }}>
+                    Todos
+                  </button>
+                  <button onClick={() => { setTypeFilter('folders'); setShowTypeDropdown(false); }}>
+                    Pastas
+                  </button>
+                  <button onClick={() => { setTypeFilter('files'); setShowTypeDropdown(false); }}>
+                    Arquivos
+                  </button>
+                  <button onClick={() => { setTypeFilter('images'); setShowTypeDropdown(false); }}>
+                    Imagens
+                  </button>
+                  <button onClick={() => { setTypeFilter('documents'); setShowTypeDropdown(false); }}>
+                    Documentos
+                  </button>
+                  <button onClick={() => { setTypeFilter('videos'); setShowTypeDropdown(false); }}>
+                    Vídeos
+                  </button>
+                  <button onClick={() => { setTypeFilter('audio'); setShowTypeDropdown(false); }}>
+                    Áudio
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Controles de visualização */}
+          <div className={styles.viewControls}>
+            <button
+              className={`${styles.viewBtn} ${viewMode === 'grid' ? styles.active : ''}`}
+              onClick={() => setViewMode('grid')}
+            >
+              <i className="fas fa-th"></i>
+            </button>
+            <button
+              className={`${styles.viewBtn} ${viewMode === 'list' ? styles.active : ''}`}
+              onClick={() => setViewMode('list')}
+            >
+              <i className="fas fa-list"></i>
+            </button>
+            <button
+              className={`${styles.viewBtn} ${selectMode ? styles.active : ''}`}
+              onClick={() => setSelectMode(!selectMode)}
+            >
+              <i className="fas fa-check-square"></i>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Breadcrumb de navegação */}
+      {/* Navegação */}
       {!isGlobalSearch && (
-        <div className={styles.breadcrumb}>
+        <div className={styles.navigation}>
           <button
-            className={styles.breadcrumbBtn}
+            className={styles.navBtn}
             onClick={navigateUp}
             disabled={!directoryContent?.parentPath}
           >
             <i className="fas fa-arrow-left"></i>
+            Voltar
           </button>
-          <span className={styles.currentPath}>{currentPath}</span>
-          <button className={styles.refreshBtn} onClick={refresh}>
+          <button className={styles.navBtn} onClick={refresh}>
             <i className="fas fa-sync-alt"></i>
+            Atualizar
+          </button>
+          <button className={styles.navBtn} onClick={handleNewFolder}>
+            <i className="fas fa-folder-plus"></i>
+            Nova Pasta
           </button>
         </div>
       )}
 
-      {/* Barra de busca global ativa */}
-      {isGlobalSearch && (
-        <div className={styles.searchInfo}>
-          <div className={styles.searchHeader}>
-            <span className={styles.searchLabel}>
-              <i className="fas fa-search"></i>
-              Busca global por: "{searchQuery}"
+      {/* Modo de seleção ativo */}
+      {selectMode && (
+        <div className={styles.selectionBar}>
+          <div className={styles.selectionInfo}>
+            <span>
+              {selectedItems.size === 0 ? 'Modo seleção ativo' : `${selectedItems.size} item(s) selecionado(s)`}
             </span>
-            <button className={styles.clearSearchBtn} onClick={clearSearch}>
-              <i className="fas fa-times"></i>
-              Limpar busca
+            <button className={styles.actionBtn} onClick={() => {
+              clearSelection();
+              setSelectMode(false);
+            }}>
+              <i className="fas fa-times"></i> Limpar
             </button>
           </div>
         </div>
       )}
 
-      <div className={styles.filters}>
-        <div className={styles.filterDropdown}>
-          <button
-            className={`${styles.filterBtn} ${showTypeDropdown ? styles.active : ''}`}
-            onClick={() => setShowTypeDropdown(!showTypeDropdown)}
-          >
-            {typeFilter === 'all' ? 'Todos os tipos' :
-              typeFilter === 'files' ? 'Arquivos' :
-                typeFilter === 'folders' ? 'Pastas' :
-                  typeFilter === 'images' ? 'Imagens' :
-                    typeFilter === 'documents' ? 'Documentos' :
-                      typeFilter === 'videos' ? 'Vídeos' :
-                        typeFilter === 'audio' ? 'Áudio' : 'Tipo'
-            }
-            <i className="fas fa-chevron-down"></i>
-          </button>
-
-          {showTypeDropdown && (
-            <div className={styles.dropdownMenu}>
-              <button
-                className={`${styles.dropdownItem} ${typeFilter === 'all' ? styles.selected : ''}`}
-                onClick={() => {
-                  setTypeFilter('all');
-                  setShowTypeDropdown(false);
-                }}
-              >
-                <i className="fas fa-th"></i>
-                Todos os tipos
-              </button>
-              <button
-                className={`${styles.dropdownItem} ${typeFilter === 'folders' ? styles.selected : ''}`}
-                onClick={() => {
-                  setTypeFilter('folders');
-                  setShowTypeDropdown(false);
-                }}
-              >
-                <i className="fas fa-folder"></i>
-                Pastas
-              </button>
-              <button
-                className={`${styles.dropdownItem} ${typeFilter === 'files' ? styles.selected : ''}`}
-                onClick={() => {
-                  setTypeFilter('files');
-                  setShowTypeDropdown(false);
-                }}
-              >
-                <i className="fas fa-file"></i>
-                Arquivos
-              </button>
-              <div className={styles.separator}></div>
-              <button
-                className={`${styles.dropdownItem} ${typeFilter === 'images' ? styles.selected : ''}`}
-                onClick={() => {
-                  setTypeFilter('images');
-                  setShowTypeDropdown(false);
-                }}
-              >
-                <i className="fas fa-image"></i>
-                Imagens
-              </button>
-              <button
-                className={`${styles.dropdownItem} ${typeFilter === 'documents' ? styles.selected : ''}`}
-                onClick={() => {
-                  setTypeFilter('documents');
-                  setShowTypeDropdown(false);
-                }}
-              >
-                <i className="fas fa-file-alt"></i>
-                Documentos
-              </button>
-              <button
-                className={`${styles.dropdownItem} ${typeFilter === 'videos' ? styles.selected : ''}`}
-                onClick={() => {
-                  setTypeFilter('videos');
-                  setShowTypeDropdown(false);
-                }}
-              >
-                <i className="fas fa-video"></i>
-                Vídeos
-              </button>
-              <button
-                className={`${styles.dropdownItem} ${typeFilter === 'audio' ? styles.selected : ''}`}
-                onClick={() => {
-                  setTypeFilter('audio');
-                  setShowTypeDropdown(false);
-                }}
-              >
-                <i className="fas fa-music"></i>
-                Áudio
-              </button>
-            </div>
-          )}
-        </div>
-
-        {(searchQuery || typeFilter !== 'all') && (
-          <div className={styles.activeFilters}>
-            {searchQuery && (
-              <span className={styles.filterChip}>
-                {isGlobalSearch ? 'Busca global' : 'Busca'}: "{searchQuery}"
-                <button onClick={clearSearch}>
-                  <i className="fas fa-times"></i>
-                </button>
-              </span>
-            )}
-            {typeFilter !== 'all' && (
-              <span className={styles.filterChip}>
-                Tipo: {typeFilter === 'folders' ? 'Pastas' :
-                  typeFilter === 'files' ? 'Arquivos' :
-                    typeFilter === 'images' ? 'Imagens' :
-                      typeFilter === 'documents' ? 'Documentos' :
-                        typeFilter === 'videos' ? 'Vídeos' :
-                          typeFilter === 'audio' ? 'Áudio' : typeFilter}
-                <button onClick={() => setTypeFilter('all')}>
-                  <i className="fas fa-times"></i>
-                </button>
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>
-            {isSearching ? 'Buscando...' :
-              filteredItems.length > 0 ?
-                `${filteredItems.length}${filteredItems.length !== totalItems ?
-                  ` de ${totalItems}` : ''} itens` :
-                isGlobalSearch ? 'Nenhum resultado encontrado' : 'Carregando...'
-            }
-          </h2>
-          {(selectedItems.size > 0 || selectMode) && (
-            <div className={styles.selectionActions}>
-              <span className={styles.selectionCount}>
-                {selectMode ? 'Modo seleção ativo' : `${selectedItems.size} item(s) selecionado(s)`}
-              </span>
-              <button className={styles.actionBtn} onClick={() => {
-                clearSelection();
-                setSelectMode(false);
-              }}>
-                <i className="fas fa-times"></i> Limpar
-              </button>
-            </div>
-          )}
-        </div>
-
+      {/* Conteúdo */}
+      <div className={styles.content}>
         {isSearching ? (
           <div className={styles.loadingState}>
             <i className="fas fa-spinner fa-spin"></i>
@@ -736,52 +490,13 @@ const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive = 'H:\
               <div
                 key={item.path}
                 data-path={item.path}
-                className={`${viewMode === 'grid' ? styles.itemCard : styles.itemRow
-                  } ${selectedItems.has(item.path) ? styles.selected : ''} ${isGlobalSearch ? styles.searchResult : ''}`}
-                onClick={(e) => {
-                  // Ctrl+Click sempre seleciona (independente do modo)
-                  if (e.ctrlKey) {
-                    selectItem(item.path, index, e);
-                    return;
-                  }
-
-                  // Se está no modo seleção, apenas seleciona
-                  if (selectMode) {
-                    selectItem(item.path, index, e);
-                    return;
-                  }
-
-                  // Na busca global, clique simples navega para localização
-                  if (isGlobalSearch) {
-                    handleGoToItemLocation(item);
-                    return;
-                  }
-
-                  // Clique normal: apenas navega para pastas
-                  if (item.type === 'directory') {
-                    navigateToDirectory(item.path);
-                  }
-                  // Arquivos não fazem nada no clique único
-                }}
-                onDoubleClick={(e) => {
-                  e.stopPropagation();
-                  if (item.type === 'directory') {
-                    // Duplo clique em pasta: navega para dentro da pasta
-                    if (isGlobalSearch) {
-                      setSearchParams(new URLSearchParams({ path: item.path }));
-                    } else {
-                      navigateToDirectory(item.path);
-                    }
-                  } else {
-                    // Duplo clique em arquivo: abre preview
-                    setPreviewFile(item);
-                  }
-                }}
+                className={`${viewMode === 'grid' ? styles.itemCard : styles.itemRow} ${selectedItems.has(item.path) ? styles.selected : ''} ${isGlobalSearch ? styles.globalSearchItem : ''}`}
+                onClick={(e) => handleItemClick(item, index, e)}
                 onContextMenu={(e) => handleContextMenu(e, item.path)}
               >
                 <div className={styles.itemIcon}>
                   <i
-                    className={item.icon}
+                    className={`${item.icon} ${item.type === 'directory' ? styles.folderIcon : styles.fileIcon}`}
                     style={{
                       color: item.type === 'directory' && item.folderColor
                         ? item.folderColor
@@ -839,7 +554,8 @@ const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive = 'H:\
                     e.stopPropagation();
                     handleContextMenu(e, item.path);
                   }}
-                ><i className="fas fa-ellipsis-v"></i>
+                >
+                  <i className="fas fa-ellipsis-v"></i>
                 </button>
               </div>
             ))}
@@ -847,66 +563,74 @@ const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive = 'H:\
         ) : isGlobalSearch ? (
           <div className={styles.emptyState}>
             <i className="fas fa-search"></i>
-            <h3>Nenhum resultado encontrado</h3>
-            <p>Tente usar termos diferentes ou verifique a ortografia</p>
-            <button className={styles.clearSearchBtn} onClick={clearSearch}>
-              Voltar para navegação
+            <p>Nenhum resultado encontrado</p>
+            <button
+              onClick={() => {
+                setIsGlobalSearch(false);
+                setGlobalSearchResults([]);
+              }}
+              className={styles.backBtn}
+            >
+              Voltar ao drive
             </button>
           </div>
         ) : (
           <div className={styles.emptyState}>
             <i className="fas fa-folder-open"></i>
-            <h3>Pasta vazia</h3>
-            <p>Esta pasta não contém arquivos</p>
+            <p>Esta pasta está vazia</p>
           </div>
         )}
-      </section>
+      </div>
 
-      {/* Menu de contexto */}
+      {/* Context Menu */}
       <ContextMenu
         isOpen={contextMenu.isOpen}
         position={contextMenu.position}
         onClose={closeContextMenu}
         selectedItems={getSelectedItemsData()}
+        onNewFolder={handleNewFolder}
+        onRename={handleRename}
+        onDelete={handleDelete}
         onCopy={handleCopy}
         onCut={handleCut}
         onPaste={handlePaste}
-        onDelete={handleDelete}
-        onRename={handleRename}
-        onCreateFolder={handleCreateFolder}
         onToggleStar={handleToggleStar}
-        onSetFolderColor={handleSetFolderColor}
+        onSetColor={handleSetColor}
+        onPreview={handlePreview}
         onDownload={handleDownload}
-        onSelectMode={handleSelectMode}
         canPaste={clipboard.items.length > 0}
       />
 
-      {/* Preview de arquivo */}
-      <PopupDefault
-        isOpen={!!previewFile}
-        title={previewFile?.name}
-        onClose={() => setPreviewFile(null)}
-      >
-        {previewFile && (
-          <FilePreview path={previewFile.path} extension={previewFile.extension} />
-        )}
-      </PopupDefault>
-
-      {/* Overlay para fechar contexto ao clicar fora */}
-      <div
-        className={styles.contextOverlay}
-        onContextMenu={handleContextMenu}
-        style={{ display: contextMenu.isOpen ? 'none' : 'block' }}
-      />
-
-      {/* Barra de colar persistente */}
+      {/* Paste Bar */}
       <PasteBar
         isVisible={showPasteBar}
-        operation={clipboard.operation}
         items={clipboard.items}
+        operation={clipboard.operation}
         onPaste={handlePaste}
-        onCancel={handleCancelPaste}
+        onCancel={() => {
+          copyItems([]);
+          setShowPasteBar(false);
+        }}
       />
+
+      {/* File Preview */}
+      {previewFile && (
+        <PopupDefault
+          isOpen={true}
+          title={`Visualizar - ${previewFile.name}`}
+          onClose={() => setPreviewFile(null)}
+        >
+          <FilePreview file={previewFile} onClose={() => setPreviewFile(null)} />
+        </PopupDefault>
+      )}
+
+      {/* Overlay para fechar dropdown */}
+      {showTypeDropdown && (
+        <div
+          className={styles.overlay}
+          onClick={() => setShowTypeDropdown(false)}
+        ></div>
+      )}
     </div>
   );
 };

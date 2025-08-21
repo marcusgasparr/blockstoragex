@@ -1,6 +1,6 @@
 import * as si from "systeminformation";
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
 export interface DiskInfo {
   filesystem: string;
@@ -22,10 +22,13 @@ export interface SystemDiskInfo {
 export class DiskService {
   static async getDiskInfo(): Promise<SystemDiskInfo> {
     try {
+      console.log("🔍 Obtendo informações dos discos...");
+
       // Obtém informações dos discos
       const fsSize = await si.fsSize();
+      console.log("📊 Discos encontrados:", fsSize.length);
 
-      // Formata os dados para  interface
+      // Formata os dados para interface
       const disks: DiskInfo[] = fsSize.map((disk) => ({
         filesystem: disk.fs,
         size: disk.size,
@@ -44,6 +47,8 @@ export class DiskService {
         0
       );
 
+      console.log("✅ Informações dos discos obtidas com sucesso");
+
       return {
         disks,
         totalSize,
@@ -51,7 +56,7 @@ export class DiskService {
         totalAvailable,
       };
     } catch (error) {
-      console.error("Erro ao obter informações do disco:", error);
+      console.error("💥 Erro ao obter informações do disco:", error);
       throw new Error("Falha ao obter informações do disco");
     }
   }
@@ -70,18 +75,49 @@ export class DiskService {
     mountpoint: string = "C:\\"
   ): Promise<DiskInfo | null> {
     try {
-      const fsSize = await si.fsSize();
+      console.log("🔍 Buscando disco específico:", mountpoint);
 
-      // Procura pelo disco específico
-      const specificDisk = fsSize.find(
-        (disk) =>
-          disk.mount === mountpoint ||
-          disk.fs.includes(mountpoint.replace("\\", ""))
+      const fsSize = await si.fsSize();
+      console.log(
+        "📊 Discos disponíveis para busca:",
+        fsSize.map((d) => ({ mount: d.mount, fs: d.fs }))
       );
 
+      // Procura pelo disco específico com lógica melhorada
+      const specificDisk = fsSize.find((disk) => {
+        // Normalizar caminhos para comparação
+        const diskMount = disk.mount.toLowerCase().replace(/\//g, "\\");
+        const targetMount = mountpoint.toLowerCase();
+
+        console.log(`🔍 Comparando: "${diskMount}" com "${targetMount}"`);
+
+        // Verificar várias possibilidades de match
+        const matches =
+          diskMount === targetMount ||
+          diskMount === targetMount + "\\" ||
+          diskMount + "\\" === targetMount ||
+          disk.fs
+            .toLowerCase()
+            .includes(targetMount.replace("\\", "").charAt(0));
+
+        if (matches) {
+          console.log(`✅ Match encontrado: ${disk.mount} (${disk.fs})`);
+        }
+
+        return matches;
+      });
+
       if (!specificDisk) {
-        throw new Error(`Disco ${mountpoint} não encontrado`);
+        console.log("❌ Disco não encontrado");
+        console.log(
+          "🔍 Discos disponíveis:",
+          fsSize.map((d) => ({ mount: d.mount, fs: d.fs }))
+        );
+        console.log("🎯 Procurando por:", mountpoint);
+        return null;
       }
+
+      console.log("✅ Disco específico encontrado:", specificDisk.mount);
 
       return {
         filesystem: specificDisk.fs,
@@ -93,7 +129,7 @@ export class DiskService {
         type: specificDisk.type,
       };
     } catch (error) {
-      console.error("Erro ao obter disco específico:", error);
+      console.error("💥 Erro ao obter disco específico:", error);
       return null;
     }
   }

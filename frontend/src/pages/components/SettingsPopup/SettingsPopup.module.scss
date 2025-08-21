@@ -78,7 +78,8 @@
   border-top: 1px solid var(--border-light);
 }
 
-.cancelBtn, .saveBtn {
+.cancelBtn,
+.saveBtn {
   padding: 8px 16px;
   border-radius: var(--border-radius);
   font-size: 14px;
@@ -105,5 +106,76 @@
 
   &:hover {
     background: var(--primary-hover);
+  }
+}
+
+// Adicione estes estilos ao seu arquivo SettingsPopup.module.scss existente
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  text-align: center;
+  color: var(--text-secondary);
+
+  i {
+    font-size: 16px;
+    color: var(--primary-color);
+  }
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: var(--border-radius);
+  color: #856404;
+
+  i {
+    font-size: 16px;
+    color: #f39c12;
+  }
+}
+
+.noDrives {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius);
+
+  i {
+    font-size: 16px;
+    color: var(--text-muted);
+  }
+}
+
+// Melhorar o estilo do seletor de drives
+.driveSelector {
+  .driveOption {
+    &:hover {
+      background-color: var(--bg-hover);
+    }
+
+    input[type="radio"]:checked + .driveLabel {
+      color: var(--primary-color);
+      font-weight: 500;
+    }
+  }
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+
+  &:hover {
+    background-color: var(--primary-color);
   }
 }

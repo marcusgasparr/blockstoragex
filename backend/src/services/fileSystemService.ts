@@ -1,10 +1,10 @@
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface FileSystemItem {
   name: string;
   path: string;
-  type: "file" | "directory";
+  type: 'file' | 'directory';
   size: number;
   modified: Date;
   extension?: string;
@@ -21,155 +21,112 @@ export interface DirectoryContent {
 }
 
 export class FileSystemService {
-  // Busca recursiva de todos os favoritos em todas as subpastas
-  // Retorna todos os favoritos diretamente do Set, sem busca recursiva
-  static getAllStarredItems(): FileSystemItem[] {
-    const result: FileSystemItem[] = [];
-    for (const filePath of this.favorites) {
-      try {
-        const stat = fs.statSync(filePath);
-        result.push({
-          name: path.basename(filePath),
-          path: filePath,
-          type: stat.isDirectory() ? "directory" : "file",
-          size: stat.size,
-          modified: stat.mtime,
-          extension: stat.isFile()
-            ? path.extname(filePath).toLowerCase()
-            : undefined,
-          icon: this.getFileIcon(path.basename(filePath), stat.isDirectory()),
-          isStarred: true,
-          folderColor: stat.isDirectory()
-            ? this.folderColors.get(filePath)
-            : undefined,
-        });
-      } catch (err) {
-        // Se o arquivo não existe mais, ignora
-        continue;
-      }
-    }
-    return result;
-  }
-  // ...continuação da classe...
-  // Diretórios permitidos para navegação (segurança)
-  private static allowedPaths = [
-    // 'C:\\Users',
-    // 'C:\\Program Files',
-    // 'C:\\Program Files (x86)',
-    "D:\\",
-    "E:\\",
-    "E:\\Hotfix",
-    "F:\\",
-    "G:\\",
-    "H:\\",
-    // Adicione mais conforme necessário
-  ];
-
-  // Armazenamento simples para favoritos e cores (em produção usar banco de dados)
+  // Cache para favoritos e cores
   private static favorites = new Set<string>();
   private static folderColors = new Map<string, string>();
 
-  static async getDirectoryContents(
-    dirPath: string = "C:\\Users"
-  ): Promise<DirectoryContent> {
+  static async getDirectoryContents(dirPath: string = "H:\\"): Promise<DirectoryContent> {
     try {
-      // Verificação de segurança
-      if (!this.isPathAllowed(dirPath)) {
+      console.log('🔍 Tentando acessar diretório:', dirPath);
+      
+      const normalizedPath = path.resolve(dirPath);
+      console.log('📁 Caminho normalizado:', normalizedPath);
+
+      if (!this.isPathAllowed(normalizedPath)) {
+        console.log('❌ Acesso negado ao diretório:', normalizedPath);
         throw new Error("Acesso negado ao diretório especificado");
       }
 
-      // Verificar se o diretório existe
-      if (!fs.existsSync(dirPath)) {
+      if (!fs.existsSync(normalizedPath)) {
+        console.log('❌ Diretório não encontrado:', normalizedPath);
         throw new Error("Diretório não encontrado");
       }
 
-      const stat = fs.statSync(dirPath);
+      const stat = fs.statSync(normalizedPath);
       if (!stat.isDirectory()) {
-        throw new Error("Caminho especificado não é um diretório");
+        console.log('❌ Não é um diretório:', normalizedPath);
+        throw new Error("O caminho especificado não é um diretório");
       }
 
-      // Ler conteúdo do diretório
-      const files = fs.readdirSync(dirPath);
+      console.log('📂 Lendo conteúdo do diretório...');
+      const files = fs.readdirSync(normalizedPath);
+      console.log(`📋 Encontrados ${files.length} itens`);
+
       const items: FileSystemItem[] = [];
 
       for (const file of files) {
         try {
-          const filePath = path.join(dirPath, file);
+          const filePath = path.join(normalizedPath, file);
           const fileStat = fs.statSync(filePath);
 
           const item: FileSystemItem = {
             name: file,
             path: filePath,
-            type: fileStat.isDirectory() ? "directory" : "file",
+            type: fileStat.isDirectory() ? 'directory' : 'file',
             size: fileStat.size,
             modified: fileStat.mtime,
-            extension: fileStat.isFile()
-              ? path.extname(file).toLowerCase()
-              : undefined,
+            extension: fileStat.isFile() ? path.extname(file).toLowerCase() : undefined,
             icon: this.getFileIcon(file, fileStat.isDirectory()),
             isStarred: this.favorites.has(filePath),
-            folderColor: fileStat.isDirectory()
-              ? this.folderColors.get(filePath)
-              : undefined,
+            folderColor: fileStat.isDirectory() ? this.folderColors.get(filePath) : undefined,
           };
 
           items.push(item);
         } catch (error: any) {
-          // Pular arquivos/pastas com erro de acesso (EPERM, etc.)
-          // Apenas log silencioso para pastas protegidas do sistema
-          if (error.code === "EPERM") {
-            // console.log(`Ignorando pasta protegida: ${file}`);
-          }
-          continue; // Continua para o próximo arquivo sem adicionar este
+          console.warn(`⚠️ Erro ao acessar ${file}:`, error.message);
+          continue;
         }
       }
 
-      // Ordenar: diretórios primeiro, depois arquivos, ambos alfabeticamente
       items.sort((a, b) => {
         if (a.type !== b.type) {
-          return a.type === "directory" ? -1 : 1;
+          return a.type === 'directory' ? -1 : 1;
         }
         return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
       });
 
-      const parentPath = this.getParentPath(dirPath);
+      const parentPath = this.getParentPath(normalizedPath);
 
       return {
-        currentPath: dirPath,
+        currentPath: normalizedPath,
         parentPath,
         items,
         totalItems: items.length,
       };
     } catch (error) {
-      console.error("Erro ao ler diretório:", error);
-      throw new Error(
-        error instanceof Error ? error.message : "Erro ao ler diretório"
-      );
+      console.error('💥 Erro ao obter conteúdo do diretório:', error);
+      throw error;
     }
   }
 
-  static async createDirectory(
-    dirPath: string,
-    name: string
-  ): Promise<boolean> {
+  static async createDirectory(parentPath: string, name: string): Promise<boolean> {
     try {
-      if (!this.isPathAllowed(dirPath)) {
-        throw new Error("Acesso negado ao diretório especificado");
+      const newDirPath = path.join(parentPath, name);
+
+      if (!this.isPathAllowed(newDirPath)) {
+        throw new Error('Acesso negado ao local especificado');
       }
 
-      const newDirPath = path.join(dirPath, name);
+      if (fs.existsSync(newDirPath)) {
+        throw new Error('Diretório já existe');
+      }
+
       fs.mkdirSync(newDirPath);
       return true;
     } catch (error) {
-      console.error("Erro ao criar diretório:", error);
-      throw new Error("Erro ao criar diretório");
+      console.error('Erro ao criar diretório:', error);
+      throw error;
     }
   }
 
   static async deleteItem(itemPath: string): Promise<boolean> {
     try {
-      if (!this.isPathAllowed(path.dirname(itemPath))) {
-        throw new Error("Acesso negado");
+      if (!this.isPathAllowed(itemPath)) {
+        throw new Error('Acesso negado ao item especificado');
+      }
+
+      if (!fs.existsSync(itemPath)) {
+        throw new Error('Item não encontrado');
       }
 
       const stat = fs.statSync(itemPath);
@@ -180,65 +137,118 @@ export class FileSystemService {
         fs.unlinkSync(itemPath);
       }
 
+      this.favorites.delete(itemPath);
+      this.folderColors.delete(itemPath);
+
       return true;
     } catch (error) {
-      console.error("Erro ao excluir item:", error);
-      throw new Error("Erro ao excluir item");
+      console.error('Erro ao excluir item:', error);
+      throw error;
     }
   }
 
-  static async renameItem(oldPath: string, newName: string): Promise<boolean> {
+  static async renameItem(itemPath: string, newName: string): Promise<boolean> {
     try {
-      if (!this.isPathAllowed(path.dirname(oldPath))) {
-        throw new Error("Acesso negado");
+      if (!this.isPathAllowed(itemPath)) {
+        throw new Error('Acesso negado ao item especificado');
       }
 
-      const newPath = path.join(path.dirname(oldPath), newName);
-      fs.renameSync(oldPath, newPath);
+      if (!fs.existsSync(itemPath)) {
+        throw new Error('Item não encontrado');
+      }
+
+      const parentDir = path.dirname(itemPath);
+      const newPath = path.join(parentDir, newName);
+
+      if (fs.existsSync(newPath)) {
+        throw new Error('Um item com esse nome já existe');
+      }
+
+      fs.renameSync(itemPath, newPath);
+
+      if (this.favorites.has(itemPath)) {
+        this.favorites.delete(itemPath);
+        this.favorites.add(newPath);
+      }
+
+      if (this.folderColors.has(itemPath)) {
+        const color = this.folderColors.get(itemPath);
+        this.folderColors.delete(itemPath);
+        if (color) {
+          this.folderColors.set(newPath, color);
+        }
+      }
+
       return true;
     } catch (error) {
-      console.error("Erro ao renomear item:", error);
-      throw new Error("Erro ao renomear item");
+      console.error('Erro ao renomear item:', error);
+      throw error;
     }
   }
 
-  static async moveItem(
-    sourcePath: string,
-    destinationDir: string
-  ): Promise<boolean> {
+  static async moveItem(sourcePath: string, destinationDir: string): Promise<boolean> {
     try {
-      if (
-        !this.isPathAllowed(path.dirname(sourcePath)) ||
-        !this.isPathAllowed(destinationDir)
-      ) {
-        throw new Error("Acesso negado");
+      if (!this.isPathAllowed(sourcePath) || !this.isPathAllowed(destinationDir)) {
+        throw new Error('Acesso negado ao caminho especificado');
+      }
+
+      if (!fs.existsSync(sourcePath)) {
+        throw new Error('Item de origem não encontrado');
+      }
+
+      if (!fs.existsSync(destinationDir)) {
+        throw new Error('Diretório de destino não encontrado');
       }
 
       const fileName = path.basename(sourcePath);
       const newPath = path.join(destinationDir, fileName);
+
+      if (fs.existsSync(newPath)) {
+        throw new Error('Um item com esse nome já existe no destino');
+      }
 
       fs.renameSync(sourcePath, newPath);
+
+      if (this.favorites.has(sourcePath)) {
+        this.favorites.delete(sourcePath);
+        this.favorites.add(newPath);
+      }
+
+      if (this.folderColors.has(sourcePath)) {
+        const color = this.folderColors.get(sourcePath);
+        this.folderColors.delete(sourcePath);
+        if (color) {
+          this.folderColors.set(newPath, color);
+        }
+      }
+
       return true;
     } catch (error) {
-      console.error("Erro ao mover item:", error);
-      throw new Error("Erro ao mover item");
+      console.error('Erro ao mover item:', error);
+      throw error;
     }
   }
 
-  static async copyItem(
-    sourcePath: string,
-    destinationDir: string
-  ): Promise<boolean> {
+  static async copyItem(sourcePath: string, destinationDir: string): Promise<boolean> {
     try {
-      if (
-        !this.isPathAllowed(path.dirname(sourcePath)) ||
-        !this.isPathAllowed(destinationDir)
-      ) {
-        throw new Error("Acesso negado");
+      if (!this.isPathAllowed(sourcePath) || !this.isPathAllowed(destinationDir)) {
+        throw new Error('Acesso negado ao caminho especificado');
+      }
+
+      if (!fs.existsSync(sourcePath)) {
+        throw new Error('Item de origem não encontrado');
+      }
+
+      if (!fs.existsSync(destinationDir)) {
+        throw new Error('Diretório de destino não encontrado');
       }
 
       const fileName = path.basename(sourcePath);
       const newPath = path.join(destinationDir, fileName);
+
+      if (fs.existsSync(newPath)) {
+        throw new Error('Um item com esse nome já existe no destino');
+      }
 
       const stat = fs.statSync(sourcePath);
 
@@ -250,49 +260,247 @@ export class FileSystemService {
 
       return true;
     } catch (error) {
-      console.error("Erro ao copiar item:", error);
-      throw new Error("Erro ao copiar item");
+      console.error('Erro ao copiar item:', error);
+      throw error;
     }
   }
 
-  private static copyDirectoryRecursive(
-    source: string,
-    destination: string
-  ): void {
-    if (!fs.existsSync(destination)) {
-      fs.mkdirSync(destination);
-    }
-
-    const files = fs.readdirSync(source);
+  private static copyDirectoryRecursive(src: string, dest: string): void {
+    fs.mkdirSync(dest, { recursive: true });
+    const files = fs.readdirSync(src);
 
     for (const file of files) {
-      const sourcePath = path.join(source, file);
-      const destPath = path.join(destination, file);
-      const stat = fs.statSync(sourcePath);
+      const srcPath = path.join(src, file);
+      const destPath = path.join(dest, file);
+      const stat = fs.statSync(srcPath);
 
       if (stat.isDirectory()) {
-        this.copyDirectoryRecursive(sourcePath, destPath);
+        this.copyDirectoryRecursive(srcPath, destPath);
       } else {
-        fs.copyFileSync(sourcePath, destPath);
+        fs.copyFileSync(srcPath, destPath);
       }
     }
   }
 
-  private static isPathAllowed(dirPath: string): boolean {
-    // Normalizar o caminho
-    const normalizedPath = path.resolve(dirPath);
+  static async toggleStar(itemPath: string): Promise<boolean> {
+    try {
+      if (!this.isPathAllowed(itemPath)) {
+        throw new Error('Acesso negado ao item especificado');
+      }
 
-    // Verificar se o caminho está na lista de permitidos
-    return this.allowedPaths.some((allowedPath) => {
+      if (!fs.existsSync(itemPath)) {
+        throw new Error('Item não encontrado');
+      }
+
+      const isCurrentlyStarred = this.favorites.has(itemPath);
+
+      if (isCurrentlyStarred) {
+        this.favorites.delete(itemPath);
+      } else {
+        this.favorites.add(itemPath);
+      }
+
+      return !isCurrentlyStarred;
+    } catch (error) {
+      console.error('Erro ao favoritar item:', error);
+      throw error;
+    }
+  }
+
+  static async setFolderColor(folderPath: string, color: string): Promise<boolean> {
+    try {
+      if (!this.isPathAllowed(folderPath)) {
+        throw new Error('Acesso negado à pasta especificada');
+      }
+
+      if (!fs.existsSync(folderPath)) {
+        throw new Error('Pasta não encontrada');
+      }
+
+      const stat = fs.statSync(folderPath);
+      if (!stat.isDirectory()) {
+        throw new Error('O caminho especificado não é uma pasta');
+      }
+
+      this.folderColors.set(folderPath, color);
+      return true;
+    } catch (error) {
+      console.error('Erro ao definir cor da pasta:', error);
+      throw error;
+    }
+  }
+
+  static getAllStarredItems(): FileSystemItem[] {
+    const starredItems: FileSystemItem[] = [];
+
+    for (const itemPath of this.favorites) {
+      try {
+        if (fs.existsSync(itemPath)) {
+          const stat = fs.statSync(itemPath);
+          const fileName = path.basename(itemPath);
+
+          const item: FileSystemItem = {
+            name: fileName,
+            path: itemPath,
+            type: stat.isDirectory() ? 'directory' : 'file',
+            size: stat.size,
+            modified: stat.mtime,
+            extension: stat.isFile() ? path.extname(fileName).toLowerCase() : undefined,
+            icon: this.getFileIcon(fileName, stat.isDirectory()),
+            isStarred: true,
+            folderColor: stat.isDirectory() ? this.folderColors.get(itemPath) : undefined,
+          };
+
+          starredItems.push(item);
+        } else {
+          this.favorites.delete(itemPath);
+        }
+      } catch (error) {
+        this.favorites.delete(itemPath);
+      }
+    }
+
+    return starredItems;
+  }
+
+  static async readFile(filePath: string): Promise<string> {
+    try {
+      if (!this.isPathAllowed(filePath)) {
+        throw new Error('Acesso negado ao arquivo especificado');
+      }
+
+      if (!fs.existsSync(filePath)) {
+        throw new Error('Arquivo não encontrado');
+      }
+
+      const stat = fs.statSync(filePath);
+      if (!stat.isFile()) {
+        throw new Error('O caminho especificado não é um arquivo');
+      }
+
+      if (stat.size > 1024 * 1024) {
+        throw new Error('Arquivo muito grande para leitura');
+      }
+
+      return fs.readFileSync(filePath, 'utf-8');
+    } catch (error) {
+      console.error('Erro ao ler arquivo:', error);
+      throw error;
+    }
+  }
+
+  static async downloadFile(filePath: string, res: any): Promise<void> {
+    try {
+      if (!this.isPathAllowed(filePath)) {
+        throw new Error('Acesso negado ao arquivo especificado');
+      }
+
+      if (!fs.existsSync(filePath)) {
+        throw new Error('Arquivo não encontrado');
+      }
+
+      const stat = fs.statSync(filePath);
+      if (!stat.isFile()) {
+        throw new Error('O caminho especificado não é um arquivo');
+      }
+
+      const fileName = path.basename(filePath);
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('Content-Type', 'application/octet-stream');
+
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error('Erro ao fazer download:', error);
+      throw new Error(error instanceof Error ? error.message : "Erro ao fazer download");
+    }
+  }
+
+  static async searchFiles(query: string, rootPath: string): Promise<FileSystemItem[]> {
+    try {
+      const results: FileSystemItem[] = [];
+      const searchTerm = query.toLowerCase();
+
+      const searchInDirectory = async (dirPath: string) => {
+        try {
+          if (!this.isPathAllowed(dirPath)) {
+            return;
+          }
+
+          const files = fs.readdirSync(dirPath);
+
+          for (const file of files) {
+            try {
+              const filePath = path.join(dirPath, file);
+              const fileStat = fs.statSync(filePath);
+
+              if (file.toLowerCase().includes(searchTerm)) {
+                const item: FileSystemItem = {
+                  name: file,
+                  path: filePath,
+                  type: fileStat.isDirectory() ? "directory" : "file",
+                  size: fileStat.size,
+                  modified: fileStat.mtime,
+                  extension: fileStat.isFile() ? path.extname(file).toLowerCase() : undefined,
+                  icon: this.getFileIcon(file, fileStat.isDirectory()),
+                  isStarred: this.favorites.has(filePath),
+                  folderColor: fileStat.isDirectory() ? this.folderColors.get(filePath) : undefined,
+                };
+
+                results.push(item);
+              }
+
+              if (fileStat.isDirectory() && results.length < 1000) {
+                await searchInDirectory(filePath);
+              }
+            } catch (error: any) {
+              continue;
+            }
+          }
+        } catch (error) {
+          return;
+        }
+      };
+
+      await searchInDirectory(rootPath);
+
+      results.sort((a, b) => {
+        if (a.type !== b.type) {
+          return a.type === "directory" ? -1 : 1;
+        }
+        return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+      });
+
+      return results.slice(0, 500);
+    } catch (error) {
+      console.error("Erro na busca:", error);
+      throw new Error("Erro ao realizar busca");
+    }
+  }
+
+  private static isPathAllowed(targetPath: string): boolean {
+    const allowedPaths = [
+      "H:\\",
+      "C:\\",
+      "C:\\Users",
+      "D:\\",
+      "E:\\",
+      "F:\\",
+      "G:\\",
+    ];
+
+    const result = allowedPaths.some((allowedPath) => {
       const normalizedAllowed = path.resolve(allowedPath);
+      const normalizedPath = path.resolve(targetPath);
 
-      // Permitir qualquer subpasta dentro dos caminhos permitidos
-      // Também permitir o próprio caminho permitido
       return (
         normalizedPath.startsWith(normalizedAllowed) ||
-        normalizedPath === normalizedAllowed
+        normalizedAllowed === normalizedPath
       );
     });
+
+    console.log(`🔐 Verificação de acesso: ${targetPath} -> ${result ? '✅ Permitido' : '❌ Negado'}`);
+    return result;
   }
 
   private static getParentPath(currentPath: string): string | null {
@@ -301,22 +509,15 @@ export class FileSystemService {
     console.log("🔍 Debug getParentPath:");
     console.log("  currentPath:", currentPath);
     console.log("  parent:", parent);
-    console.log("  root:", path.parse(currentPath).root);
 
-    // Normalizar os caminhos para comparação
     const normalizedCurrent = path.resolve(currentPath);
     const normalizedParent = path.resolve(parent);
-    const root = path.parse(currentPath).root;
 
-    // Se o parent é igual ao current, significa que chegou na raiz absoluta
     if (normalizedParent === normalizedCurrent) {
       console.log("  → Retornando null (parent === current)");
       return null;
     }
 
-    // CORREÇÃO: Remover a verificação de root para permitir voltar para H:\
-
-    // Verificar se o parent é um caminho permitido
     if (!this.isPathAllowed(parent)) {
       console.log("  → Retornando null (parent não permitido)");
       return null;
@@ -358,9 +559,7 @@ export class FileSystemService {
       ".zip": "fas fa-file-archive",
       ".rar": "fas fa-file-archive",
       ".7z": "fas fa-file-archive",
-      ".tar": "fas fa-file-archive",
       ".js": "fas fa-file-code",
-      ".ts": "fas fa-file-code",
       ".html": "fas fa-file-code",
       ".css": "fas fa-file-code",
       ".json": "fas fa-file-code",
@@ -370,202 +569,5 @@ export class FileSystemService {
     };
 
     return iconMap[extension] || "fas fa-file";
-  }
-
-  static formatFileSize(bytes: number): string {
-    if (bytes === 0) return "0 Bytes";
-
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  }
-
-  static async toggleStar(itemPath: string): Promise<boolean> {
-    try {
-      if (!this.isPathAllowed(path.dirname(itemPath))) {
-        throw new Error("Acesso negado");
-      }
-
-      if (this.favorites.has(itemPath)) {
-        this.favorites.delete(itemPath);
-        return false;
-      } else {
-        this.favorites.add(itemPath);
-        return true;
-      }
-    } catch (error) {
-      console.error("Erro ao favoritar item:", error);
-      throw new Error("Erro ao favoritar item");
-    }
-  }
-
-  static async setFolderColor(
-    folderPath: string,
-    color: string
-  ): Promise<boolean> {
-    try {
-      if (!this.isPathAllowed(path.dirname(folderPath))) {
-        throw new Error("Acesso negado");
-      }
-
-      // Verificar se é um diretório
-      const stat = fs.statSync(folderPath);
-      if (!stat.isDirectory()) {
-        throw new Error("Caminho especificado não é um diretório");
-      }
-
-      // Validar cores permitidas
-      const isHex = /^#(?:[0-9a-fA-F]{3}){1,2}$/.test(color.trim());
-      if (!isHex) {
-        throw new Error("Cor inválida. Use formato HEX, ex: #1e90ff");
-      }
-      this.folderColors.set(folderPath, color);
-      return true;
-    } catch (error) {
-      console.error("Erro ao definir cor da pasta:", error);
-      throw new Error("Erro ao definir cor da pasta");
-    }
-  }
-
-  // Adicione estes métodos na classe FileSystemService
-  static async readFile(filePath: string): Promise<string> {
-    try {
-      if (!this.isPathAllowed(path.dirname(filePath))) {
-        throw new Error("Acesso negado");
-      }
-
-      // Verificar se o arquivo existe
-      if (!fs.existsSync(filePath)) {
-        throw new Error("Arquivo não encontrado");
-      }
-
-      const stat = fs.statSync(filePath);
-      if (stat.isDirectory()) {
-        throw new Error("Caminho especificado é um diretório, não um arquivo");
-      }
-
-      // Verificar tamanho do arquivo (limite de 10MB)
-      if (stat.size > 10 * 1024 * 1024) {
-        throw new Error("Arquivo muito grande para visualização (máximo 10MB)");
-      }
-
-      const content = fs.readFileSync(filePath, "utf8");
-      return content;
-    } catch (error) {
-      console.error("Erro ao ler arquivo:", error);
-      throw new Error(
-        error instanceof Error ? error.message : "Erro ao ler arquivo"
-      );
-    }
-  }
-
-  static async downloadFile(filePath: string, res: any): Promise<void> {
-    try {
-      if (!this.isPathAllowed(path.dirname(filePath))) {
-        throw new Error("Acesso negado");
-      }
-
-      // Verificar se o arquivo existe
-      if (!fs.existsSync(filePath)) {
-        throw new Error("Arquivo não encontrado");
-      }
-
-      const stat = fs.statSync(filePath);
-      if (stat.isDirectory()) {
-        throw new Error("Caminho especificado é um diretório, não um arquivo");
-      }
-
-      const fileName = path.basename(filePath);
-
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="${fileName}"`
-      );
-      res.setHeader("Content-Type", "application/octet-stream");
-
-      const fileStream = fs.createReadStream(filePath);
-      fileStream.pipe(res);
-    } catch (error) {
-      console.error("Erro ao fazer download:", error);
-      throw new Error(
-        error instanceof Error ? error.message : "Erro ao fazer download"
-      );
-    }
-  }
-
-  static async searchFiles(
-    query: string,
-    rootPath: string
-  ): Promise<FileSystemItem[]> {
-    try {
-      const results: FileSystemItem[] = [];
-      const searchTerm = query.toLowerCase();
-
-      const searchInDirectory = async (dirPath: string) => {
-        try {
-          if (!this.isPathAllowed(dirPath)) {
-            return;
-          }
-
-          const files = fs.readdirSync(dirPath);
-
-          for (const file of files) {
-            try {
-              const filePath = path.join(dirPath, file);
-              const fileStat = fs.statSync(filePath);
-
-              // Verificar se o nome contém o termo de busca
-              if (file.toLowerCase().includes(searchTerm)) {
-                const item: FileSystemItem = {
-                  name: file,
-                  path: filePath,
-                  type: fileStat.isDirectory() ? "directory" : "file",
-                  size: fileStat.size,
-                  modified: fileStat.mtime,
-                  extension: fileStat.isFile()
-                    ? path.extname(file).toLowerCase()
-                    : undefined,
-                  icon: this.getFileIcon(file, fileStat.isDirectory()),
-                  isStarred: this.favorites.has(filePath),
-                  folderColor: fileStat.isDirectory()
-                    ? this.folderColors.get(filePath)
-                    : undefined,
-                };
-
-                results.push(item);
-              }
-
-              // Se for diretório, buscar recursivamente (limitando profundidade)
-              if (fileStat.isDirectory() && results.length < 1000) {
-                await searchInDirectory(filePath);
-              }
-            } catch (error: any) {
-              // Ignorar erros de acesso (pastas protegidas, etc.)
-              continue;
-            }
-          }
-        } catch (error) {
-          // Ignorar erros de leitura de diretório
-          return;
-        }
-      };
-
-      await searchInDirectory(rootPath);
-
-      // Ordenar resultados: diretórios primeiro, depois arquivos, ambos alfabeticamente
-      results.sort((a, b) => {
-        if (a.type !== b.type) {
-          return a.type === "directory" ? -1 : 1;
-        }
-        return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-      });
-
-      return results.slice(0, 500); // Limitar a 500 resultados
-    } catch (error) {
-      console.error("Erro na busca:", error);
-      throw new Error("Erro ao realizar busca");
-    }
   }
 }

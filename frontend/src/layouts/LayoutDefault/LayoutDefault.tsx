@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar/Sidebar';
 import TopBar from './components/TopBar/TopBar';
@@ -15,13 +15,53 @@ const LayoutDefault: React.FC<LayoutDefaultProps> = ({ children }) => {
   const [searchCallback, setSearchCallback] = useState<((query: string) => void) | undefined>();
   const [showSettings, setShowSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [currentDrive, setCurrentDrive] = useState('H:\\');
+
+  // Estado para o disco atual
+  const [currentDrive, setCurrentDrive] = useState(() => {
+    const saved = localStorage.getItem('selectedDrive');
+    console.log('🏁 LayoutDefault iniciando com disco salvo:', saved);
+    return saved || 'G:\\';
+  });
+
+  // Effect para sincronizar com mudanças do localStorage
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'selectedDrive' && e.newValue) {
+        console.log('🔄 LayoutDefault detectou mudança no localStorage:', e.newValue);
+        setCurrentDrive(e.newValue);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   const handleDriveChange = (newDrive: string) => {
+    console.log('🔄 LayoutDefault: Alterando disco de', currentDrive, 'para', newDrive);
+    
+    // Verificar se realmente houve mudança
+    if (currentDrive === newDrive) {
+      console.log('⚠️ Disco já é o mesmo, não fazendo nada');
+      return;
+    }
+    
+    // Atualizar estado local
     setCurrentDrive(newDrive);
-    // Recarregar a página com o novo disco
-    window.location.reload();
+    
+    // Salvar no localStorage
+    localStorage.setItem('selectedDrive', newDrive);
+    console.log('💾 Disco salvo no localStorage:', newDrive);
+    
+    // Aguardar um pouco antes de recarregar para garantir que foi salvo
+    setTimeout(() => {
+      console.log('🔄 Recarregando página com novo disco...');
+      window.location.reload();
+    }, 100);
   };
+
+  console.log('🖥️ LayoutDefault renderizando com currentDrive:', currentDrive);
 
   return (
     <div className={styles.layout}>
@@ -31,7 +71,7 @@ const LayoutDefault: React.FC<LayoutDefaultProps> = ({ children }) => {
         onOpenHelp={() => setShowHelp(true)}
       />
       <div className={styles.content}>
-        <Sidebar />
+        <Sidebar currentDrive={currentDrive} />
         <main className={styles.main}>
           {React.cloneElement(children as React.ReactElement, {
             onSearchCallback: setSearchCallback,

@@ -1,207 +1,210 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { FileSystemItem } from '../../services/fileSystemService';
 import styles from './FilePreview.module.scss';
 
 interface FilePreviewProps {
-  path: string;
-  extension?: string;
+  file: FileSystemItem;
+  onClose: () => void;
 }
 
-const FilePreview: React.FC<FilePreviewProps> = ({ path, extension }) => {
-  const [content, setContent] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+const FilePreview: React.FC<FilePreviewProps> = ({ file, onClose }) => {
+  const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchFile = async () => {
-      setLoading(true);
-      setError(null);
+    loadFileContent();
+  }, [file]);
 
-      try {
-        const binaryTypes = ['.pdf', '.mp4', '.avi', '.mkv', '.mov', '.mp3', '.wav', '.flac', '.ogg'];
+  const loadFileContent = async () => {
+    if (!file || file.type !== 'file') {
+      setError('Arquivo inválido');
+      setLoading(false);
+      return;
+    }
 
-        if (binaryTypes.includes(extension || '')) {
-          setContent(null);
-          setLoading(false);
-          return;
-        }
+    setLoading(true);
+    setError(null);
 
-        const response = await fetch(`http://localhost:3001/api/files/read?path=${encodeURIComponent(path)}`);
+    try {
+      // Verificar se é um arquivo de texto
+      const textExtensions = ['.txt', '.md', '.json', '.xml', '.css', '.js', '.html', '.csv'];
+      const isTextFile = textExtensions.some(ext => 
+        file.extension?.toLowerCase() === ext
+      );
+
+      if (isTextFile) {
+        const response = await fetch(
+          `http://localhost:3001/api/files/read?path=${encodeURIComponent(file.path)}`
+        );
+        
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Erro ao ler arquivo');
+          throw new Error('Erro ao carregar arquivo');
         }
 
         const data = await response.json();
-        setContent(data.data);
-      } catch (err: any) {
-        setError(err.message || 'Erro ao ler arquivo');
-      } finally {
-        setLoading(false);
+        if (data.success) {
+          setContent(data.data);
+        } else {
+          throw new Error(data.message || 'Erro ao carregar conteúdo');
+        }
+      } else {
+        setError('Tipo de arquivo não suportado para visualização');
       }
-    };
-
-    fetchFile();
-  }, [path, extension]);
-
-  if (loading) {
-    return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.loadingSpinner}>
-          <i className="fas fa-spinner fa-spin"></i>
-        </div>
-        <p className={styles.loadingText}>Carregando arquivo...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={styles.errorContainer}>
-        <div className={styles.errorIcon}>
-          <i className="fas fa-exclamation-triangle"></i>
-        </div>
-        <h3 className={styles.errorTitle}>Erro ao carregar arquivo</h3>
-        <p className={styles.errorMessage}>{error}</p>
-        <button
-          className={styles.retryBtn}
-          onClick={() => window.location.reload()}
-        >
-          <i className="fas fa-redo"></i>
-          Tentar novamente
-        </button>
-      </div>
-    );
-  }
-
-  // Video Player
-  if (['.mp4', '.avi', '.mkv', '.mov', '.webm'].includes(extension || '')) {
-    return (
-      <div className={styles.mediaContainer}>
-        <div className={styles.videoWrapper}>
-          <video
-            controls
-            className={styles.videoPlayer}
-            src={`http://localhost:3001/api/files/download?path=${encodeURIComponent(path)}`}
-            poster=""
-          >
-            <p>Seu navegador não suporta reprodução de vídeo.</p>
-          </video>
-        </div>
-        <div className={styles.mediaInfo}>
-          <div className={styles.mediaDetails}>
-            <i className="fas fa-play-circle"></i>
-            <span>Arquivo de vídeo • {extension?.toUpperCase()}</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Audio Player
-  if (['.mp3', '.wav', '.flac', '.ogg', '.m4a'].includes(extension || '')) {
-    return (
-      <div className={styles.audioContainer}>
-        <div className={styles.audioHeader}>
-          <div className={styles.audioIcon}>
-            <i className="fas fa-music"></i>
-          </div>
-          <div className={styles.audioMeta}>
-            <h3 className={styles.audioTitle}>Reprodutor de Áudio</h3>
-            <p className={styles.audioFormat}>Formato: {extension?.toUpperCase()}</p>
-          </div>
-        </div>
-        <div className={styles.audioPlayerWrapper}>
-          <audio
-            controls
-            className={styles.audioPlayer}
-            src={`http://localhost:3001/api/files/download?path=${encodeURIComponent(path)}`}
-          >
-            Seu navegador não suporta reprodução de áudio.
-          </audio>
-        </div>
-      </div>
-    );
-  }
-
-  // PDF Viewer
-  if (extension === '.pdf') {
-    return (
-      <div className={styles.documentContainer}>
-        <div className={styles.documentHeader}>
-          <div className={styles.documentInfo}>
-            <i className="fas fa-file-pdf"></i>
-            <span>Documento PDF</span>
-          </div>
-          <a
-            href={`http://localhost:3001/api/files/download?path=${encodeURIComponent(path)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.openExternalBtn}
-          >
-            <i className="fas fa-external-link-alt"></i>
-            Abrir em nova aba
-          </a>
-        </div>
-        <div className={styles.pdfWrapper}>
-          <iframe
-            src={`http://localhost:3001/api/files/download?path=${encodeURIComponent(path)}`}
-            title="Visualização PDF"
-            className={styles.pdfViewer}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // JSON Viewer
-  if (extension === '.json') {
-    try {
-      const jsonObj = content ? JSON.parse(content) : null;
-      return (
-        <div className={styles.codeContainer}>
-          <div className={styles.codeHeader}>
-            <div className={styles.codeInfo}>
-              <i className="fas fa-code"></i>
-              <span>Arquivo JSON</span>
-            </div>
-            <div className={styles.codeActions}>
-              <button className={styles.copyBtn} onClick={() => navigator.clipboard.writeText(content || '')}>
-                <i className="fas fa-copy"></i>
-                Copiar
-              </button>
-            </div>
-          </div>
-          <div className={styles.codeContent}>
-            <pre className={styles.jsonCode}>
-              {JSON.stringify(jsonObj, null, 2)}
-            </pre>
-          </div>
-        </div>
-      );
-    } catch {
-      // Se não conseguir parsear, mostra como texto
+    } catch (err) {
+      console.error('Erro ao carregar arquivo:', err);
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  // Text Viewer
+  const getFileTypeInfo = () => {
+    const ext = file.extension?.toLowerCase();
+    
+    switch (ext) {
+      case '.txt':
+        return { type: 'Texto', icon: 'fas fa-file-alt' };
+      case '.md':
+        return { type: 'Markdown', icon: 'fab fa-markdown' };
+      case '.json':
+        return { type: 'JSON', icon: 'fas fa-code' };
+      case '.xml':
+        return { type: 'XML', icon: 'fas fa-code' };
+      case '.css':
+        return { type: 'CSS', icon: 'fab fa-css3-alt' };
+      case '.js':
+        return { type: 'JavaScript', icon: 'fab fa-js-square' };
+      case '.html':
+        return { type: 'HTML', icon: 'fab fa-html5' };
+      case '.csv':
+        return { type: 'CSV', icon: 'fas fa-table' };
+      case '.pdf':
+        return { type: 'PDF', icon: 'fas fa-file-pdf' };
+      case '.jpg':
+      case '.jpeg':
+      case '.png':
+      case '.gif':
+        return { type: 'Imagem', icon: 'fas fa-image' };
+      default:
+        return { type: 'Arquivo', icon: 'fas fa-file' };
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleDownload = () => {
+    window.open(
+      `http://localhost:3001/api/files/download?path=${encodeURIComponent(file.path)}`,
+      '_blank'
+    );
+  };
+
+  const fileInfo = getFileTypeInfo();
+
   return (
-    <div className={styles.textContainer}>
-      <div className={styles.textHeader}>
-        <div className={styles.textInfo}>
-          <i className="fas fa-file-alt"></i>
-          <span>Documento de Texto • {extension?.toUpperCase() || 'TXT'}</span>
+    <div className={styles.filePreview}>
+      {/* Header */}
+      <div className={styles.header}>
+        <div className={styles.fileInfo}>
+          <i className={`${fileInfo.icon} ${styles.fileIcon}`}></i>
+          <div className={styles.details}>
+            <h3 className={styles.fileName}>{file.name}</h3>
+            <div className={styles.metadata}>
+              <span>{fileInfo.type}</span>
+              <span>•</span>
+              <span>{formatFileSize(file.size)}</span>
+              <span>•</span>
+              <span>{new Date(file.modified).toLocaleDateString('pt-BR')}</span>
+            </div>
+          </div>
         </div>
-        <div className={styles.textActions}>
-          <button className={styles.copyBtn} onClick={() => navigator.clipboard.writeText(content || '')}>
-            <i className="fas fa-copy"></i>
-            Copiar texto
+        <div className={styles.actions}>
+          <button
+            className={styles.actionBtn}
+            onClick={handleDownload}
+            title="Download"
+          >
+            <i className="fas fa-download"></i>
+          </button>
+          <button
+            className={styles.actionBtn}
+            onClick={onClose}
+            title="Fechar"
+          >
+            <i className="fas fa-times"></i>
           </button>
         </div>
       </div>
-      <div className={styles.textContent}>
-        <pre className={styles.textBody}>
-          {content}
-        </pre>
+
+      {/* Content */}
+      <div className={styles.content}>
+        {loading ? (
+          <div className={styles.loading}>
+            <i className="fas fa-spinner fa-spin"></i>
+            <p>Carregando arquivo...</p>
+          </div>
+        ) : error ? (
+          <div className={styles.error}>
+            <i className="fas fa-exclamation-triangle"></i>
+            <div className={styles.errorContent}>
+              <h4>Não foi possível visualizar o arquivo</h4>
+              <p>{error}</p>
+              <button onClick={handleDownload} className={styles.downloadBtn}>
+                <i className="fas fa-download"></i>
+                Fazer download
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className={styles.fileContent}>
+            {/* Visualização de imagem */}
+            {file.extension && ['.jpg', '.jpeg', '.png', '.gif', '.bmp'].includes(file.extension.toLowerCase()) ? (
+              <div className={styles.imagePreview}>
+                <img
+                  src={`http://localhost:3001/api/files/read?path=${encodeURIComponent(file.path)}`}
+                  alt={file.name}
+                  className={styles.image}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    setError('Erro ao carregar imagem');
+                  }}
+                />
+              </div>
+            ) : content ? (
+              /* Visualização de texto */
+              <div className={styles.textPreview}>
+                <pre className={styles.textContent}>{content}</pre>
+              </div>
+            ) : (
+              /* Fallback */
+              <div className={styles.noPreview}>
+                <i className={`${fileInfo.icon} ${styles.largeIcon}`}></i>
+                <h4>Visualização não disponível</h4>
+                <p>Este tipo de arquivo não pode ser visualizado diretamente.</p>
+                <button onClick={handleDownload} className={styles.downloadBtn}>
+                  <i className="fas fa-download"></i>
+                  Fazer download para abrir
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className={styles.footer}>
+        <div className={styles.path}>
+          <i className="fas fa-folder"></i>
+          <span>{file.path}</span>
+        </div>
       </div>
     </div>
   );

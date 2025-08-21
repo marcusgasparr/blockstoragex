@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fileSystemService, DirectoryContent, FileSystemItem } from '../services/fileSystemService';
 
-export const useFileSystem = (initialPath: string = 'C:\\Users') => {
+export const useFileSystem = (initialPath: string = 'G:\\') => {
   const [directoryContent, setDirectoryContent] = useState<DirectoryContent | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -13,16 +13,21 @@ export const useFileSystem = (initialPath: string = 'C:\\Users') => {
     operation: 'copy' | 'cut' | null;
   }>({ items: [], operation: null });
 
+  console.log('🗂️ useFileSystem iniciado com path:', initialPath);
+
   const fetchDirectoryContents = useCallback(async (path: string) => {
     setLoading(true);
     setError(null);
     
     try {
+      console.log('📂 Buscando conteúdo de:', path);
       const data = await fileSystemService.getDirectoryContents(path);
       setDirectoryContent(data);
       setCurrentPath(data.currentPath);
       setSelectedItems(new Set()); // Limpar seleção ao navegar
+      console.log('✅ Conteúdo carregado:', data.items.length, 'itens');
     } catch (err) {
+      console.error('❌ Erro ao buscar conteúdo:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
       setLoading(false);
@@ -30,16 +35,19 @@ export const useFileSystem = (initialPath: string = 'C:\\Users') => {
   }, []);
 
   const navigateToDirectory = useCallback((path: string) => {
+    console.log('🧭 Navegando para:', path);
     fetchDirectoryContents(path);
   }, [fetchDirectoryContents]);
 
   const navigateUp = useCallback(() => {
     if (directoryContent?.parentPath) {
+      console.log('⬆️ Navegando para pasta pai:', directoryContent.parentPath);
       navigateToDirectory(directoryContent.parentPath);
     }
   }, [directoryContent?.parentPath, navigateToDirectory]);
 
   const refresh = useCallback(() => {
+    console.log('🔄 Atualizando conteúdo do diretório atual');
     fetchDirectoryContents(currentPath);
   }, [currentPath, fetchDirectoryContents]);
 
@@ -144,28 +152,25 @@ export const useFileSystem = (initialPath: string = 'C:\\Users') => {
   }, []);
 
   const pasteItems = useCallback(async (destinationPath?: string) => {
-    const targetPath = destinationPath || currentPath;
-    
     if (clipboard.items.length === 0 || !clipboard.operation) {
       return false;
     }
 
     try {
-      const promises = clipboard.items.map(item => {
+      const targetPath = destinationPath || currentPath;
+      
+      for (const item of clipboard.items) {
         if (clipboard.operation === 'copy') {
-          return fileSystemService.copyItem(item.path, targetPath);
-        } else {
-          return fileSystemService.moveItem(item.path, targetPath);
+          await fileSystemService.copyItem(item.path, targetPath);
+        } else if (clipboard.operation === 'cut') {
+          await fileSystemService.moveItem(item.path, targetPath);
         }
-      });
-      
-      await Promise.all(promises);
-      
-      // Se foi operação de cortar, limpar clipboard
+      }
+
       if (clipboard.operation === 'cut') {
         setClipboard({ items: [], operation: null });
       }
-      
+
       refresh();
       return true;
     } catch (err) {
@@ -174,13 +179,11 @@ export const useFileSystem = (initialPath: string = 'C:\\Users') => {
     }
   }, [clipboard, currentPath, refresh]);
 
-  const moveItems = useCallback(async (sourcePaths: string[], destinationPath: string) => {
+  const moveItems = useCallback(async (items: FileSystemItem[], destinationPath: string) => {
     try {
-      const promises = sourcePaths.map(path => 
-        fileSystemService.moveItem(path, destinationPath)
-      );
-      
-      await Promise.all(promises);
+      for (const item of items) {
+        await fileSystemService.moveItem(item.path, destinationPath);
+      }
       refresh();
       return true;
     } catch (err) {
@@ -191,9 +194,9 @@ export const useFileSystem = (initialPath: string = 'C:\\Users') => {
 
   const toggleStar = useCallback(async (itemPath: string) => {
     try {
-      const isStarred = await fileSystemService.toggleStar(itemPath);
+      const result = await fileSystemService.toggleStar(itemPath);
       refresh();
-      return isStarred;
+      return result;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao favoritar item');
       return false;
@@ -220,16 +223,17 @@ export const useFileSystem = (initialPath: string = 'C:\\Users') => {
   }, [directoryContent, selectedItems]);
 
   // Buscar todos os favoritos do disco
-  const getAllStarredItems = useCallback(async (rootPath: string = "H:\\") => {
+  const getAllStarredItems = useCallback(async (rootPath: string = "G:\\") => {
     return await fileSystemService.getAllStarredItems(rootPath);
   }, []);
 
-  // Carregar conteúdo inicial
+  // Carregar conteúdo inicial e reagir a mudanças no initialPath
   useEffect(() => {
+    console.log('🗂️ useFileSystem: initialPath mudou para:', initialPath);
     fetchDirectoryContents(initialPath);
+    // Resetar currentPath para o novo disco
+    setCurrentPath(initialPath);
   }, [initialPath, fetchDirectoryContents]);
-
-    
 
   return {
     // Estado
@@ -263,8 +267,8 @@ export const useFileSystem = (initialPath: string = 'C:\\Users') => {
     setFolderColor,
     
     // Utilitários
-    formatFileSize: fileSystemService.formatFileSize,
-    formatDate: fileSystemService.formatDate,
+    formatFileSize: (bytes: number) => fileSystemService.formatFileSize(bytes),
+    formatDate: (date: Date) => fileSystemService.formatDate(date),
     getAllStarredItems,
   };
 };
