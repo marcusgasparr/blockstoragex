@@ -1,0 +1,45 @@
+// Cores do BlockStorageX - Tema inspirado no Google Drive
+:root {
+  // Cores primárias
+  --primary-color: #1a73e8;
+  --primary-hover: #1557b0;
+  --primary-light: #4285f4;
+  
+  // Cores de fundo - tema dark
+  --bg-primary: #202124;
+  --bg-secondary: #303134;
+  --bg-tertiary: #3c4043;
+  --bg-hover: #48494a;
+  --bg-active: #5f6368;
+  
+  // Cores de texto
+  --text-primary: #e8eaed;
+  --text-secondary: #9aa0a6;
+  --text-muted: #5f6368;
+  --text-inverse: #202124;
+  
+  // Cores de borda
+  --border-color: #5f6368;
+  --border-light: #3c4043;
+  
+  // Cores de destaque
+  --success-color: #34a853;
+  --warning-color: #fbbc05;
+  --error-color: #ea4335;
+  --info-color: #1a73e8;
+  
+  // Tamanhos e espaçamentos
+  --sidebar-width: 256px;
+  --topbar-height: 64px;
+  --border-radius: 8px;
+  --border-radius-sm: 4px;
+  
+  // Transições
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  
+  // Sombras
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
+}

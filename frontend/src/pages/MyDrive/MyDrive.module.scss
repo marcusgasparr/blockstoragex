@@ -1,0 +1,867 @@
+@use '../../styles/variables.scss' as *;
+
+.home {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  
+  .title {
+    font-size: 32px;
+    font-weight: 400;
+    color: var(--text-primary);
+    margin: 0;
+  }
+  
+  .viewControls {
+    display: flex;
+    gap: 8px;
+    
+    .viewBtn {
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: transparent;
+      border-radius: var(--border-radius);
+      color: var(--text-muted);
+      font-size: 16px;
+      cursor: pointer;
+      transition: var(--transition-fast);
+      
+      &:hover {
+        background-color: var(--bg-hover);
+        color: var(--text-primary);
+      }
+      
+      &.active {
+        background-color: var(--primary-color);
+        color: white;
+      }
+    }
+  }
+}
+
+// Input de renomeação
+.renameInput {
+  width: 100%;
+  padding: 2px 6px;
+  border: 2px solid var(--primary-color);
+  border-radius: var(--border-radius-sm);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  font-weight: 500;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  }
+}
+
+// Overlay para contexto
+.contextOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.diskInfoSection {
+  margin: 20px 0;
+}
+
+.diskInfo {
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  padding: 20px;
+  border: 1px solid var(--border-light);
+
+  .error {
+    color: #dc3545;
+    margin: 0;
+  }
+}
+
+.diskDetails {
+  h3 {
+    margin: 0 0 15px 0;
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: 500;
+  }
+}
+
+.diskStats {
+  display: flex;
+  gap: 30px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .statLabel {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+
+  .statValue {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+}
+
+.progressContainer {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.progressBar {
+  flex: 1;
+  height: 8px;
+  background: var(--border-light);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.progressText {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  min-width: 70px;
+}
+
+.filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+  
+  .filterBtn {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    
+    &:hover {
+      background-color: var(--bg-hover);
+      color: var(--text-primary);
+    }
+  }
+}
+
+// Input de renomeação
+.renameInput {
+  width: 100%;
+  padding: 2px 6px;
+  border: 2px solid var(--primary-color);
+  border-radius: var(--border-radius-sm);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  font-weight: 500;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  }
+}
+
+// Overlay para contexto
+.contextOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-light);
+
+  .breadcrumbBtn, .refreshBtn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition-fast);
+
+    &:hover:not(:disabled) {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .currentPath {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    font-family: monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.section {
+  margin-bottom: 48px;
+  
+  .sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  
+  .sectionTitle {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .selectionActions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .selectionCount {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .actionBtn {
+      padding: 6px 12px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+      transition: var(--transition-fast);
+
+      &:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+      }
+    }
+  }
+}
+
+// Input de renomeação
+.renameInput {
+  width: 100%;
+  padding: 2px 6px;
+  border: 2px solid var(--primary-color);
+  border-radius: var(--border-radius-sm);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  font-weight: 500;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  }
+}
+
+// Overlay para contexto
+.contextOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.foldersGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.folderCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  
+  &:hover {
+    background-color: var(--bg-hover);
+    border-color: var(--border-color);
+  }
+  
+  .folderIcon {
+    font-size: 20px;
+    color: var(--primary-color);
+  }
+  
+  .folderName {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .moreBtn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: var(--border-radius-sm);
+    opacity: 0;
+    transition: var(--transition-fast);
+    
+    &:hover {
+      background-color: var(--bg-active);
+      color: var(--text-primary);
+    }
+  }
+  
+  &:hover .moreBtn {
+    opacity: 1;
+  }
+}
+
+.filesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.fileCard {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  position: relative;
+  
+  &:hover {
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .filePreview {
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-primary);
+    border-bottom: 1px solid var(--border-light);
+    
+    i {
+      font-size: 48px;
+      opacity: 0.7;
+      
+      &.fa-file-pdf { color: #dc3545; }
+      &.fa-file-image { color: #28a745; }
+      &.fa-file-video { color: #fd7e14; }
+      &.fa-file-word { color: #007bff; }
+      &.fa-file-excel { color: #28a745; }
+    }
+  }
+  
+  .fileInfo {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    
+    .fileName {
+      font-size: 14px;
+      color: var(--text-primary);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .fileDate {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+  }
+  
+  .moreBtn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: var(--border-radius-sm);
+    opacity: 0;
+    transition: var(--transition-fast);
+    
+    &:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+  }
+  
+  &:hover .moreBtn {
+    opacity: 1;
+  }
+}
+
+// Responsividade
+@media (max-width: 768px) {
+  .header {
+    .title {
+      font-size: 24px;
+    }
+  }
+  
+  .filters {
+    flex-wrap: wrap;
+  }
+  
+  .foldersGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .filesGrid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+
+  .diskStats {
+    gap: 20px;
+  }
+  
+  .progressContainer {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  
+  .progressText {
+    text-align: center;
+    min-width: auto;
+  }
+
+  .breadcrumb {
+    .currentPath {
+      font-size: 12px;
+    }
+  }
+}
+
+// Input de renomeação
+.renameInput {
+  width: 100%;
+  padding: 2px 6px;
+  border: 2px solid var(--primary-color);
+  border-radius: var(--border-radius-sm);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  font-weight: 500;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  }
+}
+
+// Overlay para contexto
+.contextOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+// Estados de loading e erro
+.loadingState, .errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+
+  i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+  }
+
+  p {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+  }
+}
+
+.errorState {
+  .retryBtn {
+    padding: 8px 16px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition-fast);
+
+    &:hover {
+      opacity: 0.9;
+    }
+  }
+}
+
+// Input de renomeação
+.renameInput {
+  width: 100%;
+  padding: 2px 6px;
+  border: 2px solid var(--primary-color);
+  border-radius: var(--border-radius-sm);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  font-weight: 500;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  }
+}
+
+// Overlay para contexto
+.contextOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+// Layout dos itens
+.itemsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.itemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+// Card de item (modo grid)
+.itemCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-color);
+  }
+
+  &.selected {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+
+    .itemIcon i {
+      color: white;
+    }
+  }
+
+  .itemIcon {
+    font-size: 20px;
+    position: relative;
+
+    i {
+      color: var(--primary-color);
+    }
+
+    .starIcon {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      font-size: 12px;
+      color: #ffc107;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+    }
+  }
+
+  .itemInfo {
+    flex: 1;
+    min-width: 0;
+
+    .itemName {
+      display: block;
+      font-size: 14px;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 500;
+    }
+  }
+
+  .itemMoreBtn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: var(--border-radius-sm);
+    opacity: 0;
+    transition: var(--transition-fast);
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.1);
+      color: var(--text-primary);
+    }
+  }
+
+  &:hover .itemMoreBtn {
+    opacity: 1;
+  }
+
+  &.selected .itemMoreBtn {
+    color: white;
+    opacity: 1;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+}
+
+// Input de renomeação
+.renameInput {
+  width: 100%;
+  padding: 2px 6px;
+  border: 2px solid var(--primary-color);
+  border-radius: var(--border-radius-sm);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  font-weight: 500;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  }
+}
+
+// Overlay para contexto
+.contextOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+// Row de item (modo lista)
+.itemRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid transparent;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-light);
+  }
+
+  &.selected {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+
+    .itemIcon i {
+      color: white;
+    }
+  }
+
+  .itemIcon {
+    font-size: 16px;
+    position: relative;
+
+    i {
+      color: var(--primary-color);
+    }
+
+    .starIcon {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      font-size: 10px;
+      color: #ffc107;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+    }
+  }
+
+  .itemInfo {
+    display: contents;
+
+    .itemName {
+      font-size: 14px;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 500;
+    }
+
+    .itemSize {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: right;
+      min-width: 80px;
+    }
+
+    .itemDate {
+      font-size: 12px;
+      color: var(--text-secondary);
+      min-width: 100px;
+    }
+  }
+
+  .itemMoreBtn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: var(--border-radius-sm);
+    opacity: 0;
+    transition: var(--transition-fast);
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.1);
+      color: var(--text-primary);
+    }
+  }
+
+  &:hover .itemMoreBtn {
+    opacity: 1;
+  }
+
+  &.selected .itemMoreBtn {
+    color: white;
+    opacity: 1;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+}
+
+// Input de renomeação
+.renameInput {
+  width: 100%;
+  padding: 2px 6px;
+  border: 2px solid var(--primary-color);
+  border-radius: var(--border-radius-sm);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  font-weight: 500;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  }
+}
+
+// Overlay para contexto
+.contextOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  pointer-events: none;
+}
