@@ -2,6 +2,25 @@ import React, { useEffect, useRef, useState } from 'react';
 import styles from './ContextMenu.module.scss';
 import { FileSystemItem } from '../../services/fileSystemService';
 
+interface MenuItemBase {
+  label?: string;
+  icon?: string;
+  action?: () => void;
+  disabled?: boolean;
+  shortcut?: string;
+  danger?: boolean;
+}
+
+interface SeparatorItem {
+  type: 'separator';
+}
+
+interface SubmenuItem extends MenuItemBase {
+  submenu: Array<{ label: string; color?: string; action?: () => void }>;
+}
+
+type MenuItem = MenuItemBase | SeparatorItem | SubmenuItem;
+
 // Tipagem original para menu
 interface ContextMenuProps {
   isOpen: boolean;
@@ -20,23 +39,6 @@ interface ContextMenuProps {
   onDownload: () => void;
   onSelectMode: () => void;
 }
-
-// Tipagem robusta para itens do menu
-interface MenuItemBase {
-  label?: string;
-  icon?: string;
-  action?: () => void;
-  disabled?: boolean;
-  shortcut?: string;
-  danger?: boolean;
-}
-interface SeparatorItem {
-  type: 'separator';
-}
-interface SubmenuItem extends MenuItemBase {
-  submenu: Array<{ label: string; color?: string; action?: () => void }>;
-}
-type MenuItem = MenuItemBase | SeparatorItem | SubmenuItem;
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
   isOpen,
@@ -72,12 +74,23 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
       // Ajustar posição X se o menu sair da tela
       if (position.x + menuRect.width > viewport.width) {
-        newX = viewport.width - menuRect.width - 10;
+        newX = viewport.width - menuRect.width - 20;
+      }
+      if (newX < 10) {
+        newX = 10;
       }
 
       // Ajustar posição Y se o menu sair da tela
       if (position.y + menuRect.height > viewport.height) {
-        newY = viewport.height - menuRect.height - 10;
+        newY = viewport.height - menuRect.height - 20;
+      }
+      if (newY < 10) {
+        newY = 10;
+      }
+
+      // Se ainda assim não cabe, posicionar no centro
+      if (menuRect.height > viewport.height - 40) {
+        newY = 20;
       }
 
       setAdjustedPosition({ x: newX, y: newY });
@@ -115,7 +128,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   const isDirectory = hasSelection && selectedItems[0].type === 'directory';
   const isStarred = hasSelection && selectedItems[0].isStarred;
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     {
       label: 'Selecionar',
       icon: 'fas fa-check-square',
@@ -133,21 +146,21 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       label: 'Copiar',
       icon: 'fas fa-copy',
       action: onCopy,
-      disabled: false,
+      disabled: !hasSelection,
       shortcut: 'Ctrl+C'
     },
     {
       label: 'Recortar',
       icon: 'fas fa-cut',
       action: onCut,
-      disabled: false,
+      disabled: !hasSelection,
       shortcut: 'Ctrl+X'
     },
     {
       label: 'Colar',
       icon: 'fas fa-paste',
       action: onPaste,
-      disabled: false,
+      disabled: !canPaste,
       shortcut: 'Ctrl+V'
     },
     { type: 'separator' },
@@ -155,26 +168,26 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       label: 'Download',
       icon: 'fas fa-download',
       action: onDownload,
-      disabled: false
+      disabled: !hasSelection
     },
     {
-      label: selectedItems.length === 1 && selectedItems[0].isStarred ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos',
-      icon: selectedItems.length === 1 && selectedItems[0].isStarred ? 'fas fa-star' : 'far fa-star',
+      label: isStarred ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos',
+      icon: isStarred ? 'fas fa-star' : 'far fa-star',
       action: onToggleStar,
-      disabled: false
+      disabled: !isSingleSelection
     },
     {
       label: 'Cor da Pasta',
       icon: 'fas fa-palette',
-      action: () => {},
-      disabled: false,
+      action: () => { },
+      disabled: !isSingleSelection || !isDirectory,
       submenu: [
         { label: 'Azul', color: '#007acc', action: () => onSetFolderColor('#007acc') },
         { label: 'Verde', color: '#28a745', action: () => onSetFolderColor('#28a745') },
         { label: 'Vermelho', color: '#dc3545', action: () => onSetFolderColor('#dc3545') },
         { label: 'Laranja', color: '#fd7e14', action: () => onSetFolderColor('#fd7e14') },
         { label: 'Roxo', color: '#6f42c1', action: () => onSetFolderColor('#6f42c1') },
-        { label: 'Padrão', color: '', action: () => onSetFolderColor('') }
+        { label: 'Padrão', color: '#6c757d', action: () => onSetFolderColor('default') }
       ]
     },
     { type: 'separator' },
@@ -182,21 +195,21 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       label: 'Renomear',
       icon: 'fas fa-edit',
       action: onRename,
-      disabled: false,
+      disabled: !isSingleSelection,
       shortcut: 'F2'
     },
     {
-      label: 'Excluirr',
+      label: 'Excluir',
       icon: 'fas fa-trash',
       action: onDelete,
-      disabled: false,
+      disabled: !hasSelection,
       shortcut: 'Delete',
       danger: true
     }
   ];
 
   return (
-    <div 
+    <div
       ref={menuRef}
       className={styles.contextMenu}
       style={{
@@ -205,55 +218,57 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       }}
     >
       {menuItems.map((item, index) => {
-        if (item.type === 'separator') {
+        if ('type' in item && item.type === 'separator') {
           return <div key={index} className={styles.separator} />;
         }
-        if (item.submenu) {
+        if ('submenu' in item && item.submenu) {
           return (
             <div key={index} className={styles.submenuContainer}>
-              <div className={`${styles.menuItem} ${styles.hasSubmenu}`}>
-                <i className={`${styles.icon} ${item.icon}`}></i>
-                <span className={styles.label}>{item.label}</span>
+              <div className={`${styles.menuItem} ${styles.hasSubmenu} ${'disabled' in item && item.disabled ? styles.disabled : ''}`}>
+                <i className={`${styles.icon} ${'icon' in item ? item.icon : ''}`}></i>
+                <span className={styles.label}>{'label' in item ? item.label : ''}</span>
                 <i className={`${styles.arrow} fas fa-chevron-right`}></i>
               </div>
-              <div className={styles.submenu}>
-                {item.submenu.map((subItem, subIndex) => (
-                  <button
-                    key={subIndex}
-                    className={styles.menuItem}
-                    onClick={() => {
-                      subItem.action && subItem.action();
-                      onClose();
-                    }}
-                  >
-                    {subItem.color && (
-                      <div 
-                        className={styles.colorDot}
-                        style={{ backgroundColor: subItem.color || '#6c757d' }}
-                      />
-                    )}
-                    <span className={styles.label}>{subItem.label}</span>
-                  </button>
-                ))}
-              </div>
+              {!('disabled' in item && item.disabled) && (
+                <div className={styles.submenu}>
+                  {'submenu' in item && item.submenu?.map((subItem, subIndex) => (
+                    <button
+                      key={subIndex}
+                      className={styles.menuItem}
+                      onClick={() => {
+                        subItem.action && subItem.action();
+                        onClose();
+                      }}
+                    >
+                      {subItem.color && (
+                        <div
+                          className={styles.colorDot}
+                          style={{ backgroundColor: subItem.color || '#6c757d' }}
+                        />
+                      )}
+                      <span className={styles.label}>{subItem.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           );
         }
         return (
           <button
             key={index}
-            className={`${styles.menuItem} ${item.danger ? styles.danger : ''}`}
+            className={`${styles.menuItem} ${'danger' in item && item.danger ? styles.danger : ''}`}
             onClick={() => {
-              if (!item.disabled && item.action) {
+              if (!('disabled' in item && item.disabled) && 'action' in item && item.action) {
                 item.action();
-                onClose();
               }
+              onClose();
             }}
-            disabled={item.disabled}
+            disabled={'disabled' in item ? item.disabled : false}
           >
-            <i className={`${styles.icon} ${item.icon}`}></i>
-            <span className={styles.label}>{item.label}</span>
-            {item.shortcut && (
+            <i className={`${styles.icon} ${'icon' in item ? item.icon : ''}`}></i>
+            <span className={styles.label}>{'label' in item ? item.label : ''}</span>
+            {'shortcut' in item && item.shortcut && (
               <span className={styles.shortcut}>{item.shortcut}</span>
             )}
           </button>

@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import styles from './MyDrive.module.scss';
 import { useFileSystem } from '../../hooks/useFileSystem';
 import { ContextMenu } from '../../components/ContextMenu/ContextMenu';
-import { PasteBar } from '../../components/PasteBar/PasteBar';
 import FilePreview from '../../components/FilePreview/FilePreview';
 import PopupDefault from '../../layouts/LayoutDefault/PopupDefault';
 import { FileSystemItem } from '../../services/fileSystemService';
 
 const MyDrive: React.FC = () => {
-  
+
   // Hook para navegação no sistema de arquivos
   const {
     directoryContent,
@@ -81,13 +80,17 @@ const MyDrive: React.FC = () => {
       }
     }
     closeContextMenu();
-    alert('Download iniciado!');
   };
 
   // Handlers do menu de contexto
   const handleContextMenu = (e: React.MouseEvent, itemPath?: string) => {
     e.preventDefault();
-    // Não seleciona ao abrir menu de contexto, apenas mostra menu
+
+    // Se clicou em um item específico e ele não está selecionado, seleciona ele
+    if (itemPath && !selectedItems.has(itemPath)) {
+      selectItem(itemPath, 0);
+    }
+
     setContextMenu({
       isOpen: true,
       position: { x: e.clientX, y: e.clientY }
@@ -101,85 +104,134 @@ const MyDrive: React.FC = () => {
   // Handlers do menu de contexto
   const handleCopy = () => {
     const items = getSelectedItemsData();
-    if (items.length === 0) return alert('Selecione ao menos um item para copiar.');
+    if (items.length === 0) {
+      console.warn('Nenhum item selecionado para copiar');
+      return;
+    }
+
     copyItems(items);
     setShowPasteBar(true);
-    closeContextMenu();
     console.log('Copiado:', items.map(i => i.name));
   };
 
   const handleCut = () => {
     const items = getSelectedItemsData();
-    if (items.length === 0) return alert('Selecione ao menos um item para recortar.');
+    if (items.length === 0) {
+      console.warn('Nenhum item selecionado para recortar');
+      return;
+    }
+
     cutItems(items);
     setShowPasteBar(true);
-    closeContextMenu();
     console.log('Recortado:', items.map(i => i.name));
   };
 
   const handlePaste = async () => {
-    const ok = await pasteItems();
-    setShowPasteBar(false);
-    closeContextMenu();
-    if (ok) {
-      alert('Itens colados com sucesso!');
-      refresh();
-    } else {
-      alert('Falha ao colar itens.');
+    if (clipboard.items.length === 0) {
+      console.warn('Nenhum item na área de transferência');
+      return;
+    }
+
+    try {
+      const success = await pasteItems();
+      setShowPasteBar(false);
+
+      if (success) {
+        console.log('Itens colados com sucesso');
+        refresh();
+      } else {
+        console.error('Falha ao colar itens');
+      }
+    } catch (error) {
+      console.error('Erro ao colar:', error);
     }
   };
 
   const handleDelete = async () => {
     const items = getSelectedItemsData();
-    if (items.length === 0) return alert('Selecione ao menos um item para excluir.');
-    if (confirm(`Tem certeza que deseja excluir ${items.length} item(s)?`)) {
-      await deleteSelectedItems();
-      closeContextMenu();
-      alert('Itens excluídos!');
-      refresh();
+    if (items.length === 0) {
+      console.warn('Nenhum item selecionado para excluir');
+      return;
+    }
+
+    const confirmMessage = items.length === 1
+      ? `Tem certeza que deseja excluir "${items[0].name}"?`
+      : `Tem certeza que deseja excluir ${items.length} itens?`;
+
+    if (confirm(confirmMessage)) {
+      try {
+        await deleteSelectedItems();
+        console.log('Itens excluídos com sucesso');
+        refresh();
+      } catch (error) {
+        console.error('Erro ao excluir:', error);
+        alert('Erro ao excluir itens. Verifique as permissões.');
+      }
     }
   };
 
   const handleRename = () => {
     const items = getSelectedItemsData();
-    if (items.length !== 1) return alert('Selecione apenas um item para renomear.');
+    if (items.length !== 1) {
+      console.warn('Selecione apenas um item para renomear');
+      return;
+    }
+
     setIsRenaming(items[0].path);
     setNewName(items[0].name);
-    closeContextMenu();
   };
 
   const handleCreateFolder = async () => {
     const name = prompt('Nome da nova pasta:');
-    if (name) {
-      await createDirectory(name);
-      closeContextMenu();
-      alert('Pasta criada!');
-      refresh();
+    if (name && name.trim()) {
+      try {
+        await createDirectory(name.trim());
+        console.log('Pasta criada:', name);
+        refresh();
+      } catch (error) {
+        console.error('Erro ao criar pasta:', error);
+        alert('Erro ao criar pasta. Verifique as permissões.');
+      }
     }
   };
 
   const handleToggleStar = async () => {
     const items = getSelectedItemsData();
-    if (items.length !== 1) return alert('Selecione apenas um item para favoritar.');
-    await toggleStar(items[0].path);
-    closeContextMenu();
-    alert('Favorito atualizado!');
-    refresh();
+    if (items.length !== 1) {
+      console.warn('Selecione apenas um item para favoritar');
+      return;
+    }
+
+    try {
+      await toggleStar(items[0].path);
+      console.log('Status de favorito atualizado para:', items[0].name);
+      refresh();
+    } catch (error) {
+      console.error('Erro ao atualizar favorito:', error);
+      alert('Erro ao atualizar favorito.');
+    }
   };
 
   const handleSetFolderColor = async (color: string) => {
     const items = getSelectedItemsData();
-    if (items.length !== 1 || items[0].type !== 'directory') return alert('Selecione apenas uma pasta para mudar a cor.');
-    await setFolderColor(items[0].path, color);
-    closeContextMenu();
-    alert('Cor da pasta atualizada!');
-    refresh();
+    if (items.length !== 1 || items[0].type !== 'directory') {
+      console.warn('Selecione apenas uma pasta para mudar a cor');
+      return;
+    }
+
+    try {
+      await setFolderColor(items[0].path, color);
+      console.log('Cor da pasta atualizada:', items[0].name, color);
+      refresh();
+    } catch (error) {
+      console.error('Erro ao definir cor da pasta:', error);
+      alert('Erro ao definir cor da pasta.');
+    }
   };
 
   const handleSelectMode = () => {
-    setSelectMode(true);
-    closeContextMenu();
-    alert('Modo seleção ativado!');
+    setSelectMode(!selectMode);
+    console.log('Modo seleção:', !selectMode ? 'ativado' : 'desativado');
   };
 
   const confirmRename = async () => {
@@ -239,13 +291,13 @@ const MyDrive: React.FC = () => {
       <div className={styles.header}>
         <h1 className={styles.title}>Meu Drive</h1>
         <div className={styles.viewControls}>
-          <button 
+          <button
             className={`${styles.viewBtn} ${viewMode === 'list' ? styles.active : ''}`}
             onClick={() => setViewMode('list')}
           >
             <i className="fas fa-list"></i>
           </button>
-          <button 
+          <button
             className={`${styles.viewBtn} ${viewMode === 'grid' ? styles.active : ''}`}
             onClick={() => setViewMode('grid')}
           >
@@ -256,7 +308,7 @@ const MyDrive: React.FC = () => {
 
       {/* Breadcrumb de navegação */}
       <div className={styles.breadcrumb}>
-        <button 
+        <button
           className={styles.breadcrumbBtn}
           onClick={navigateUp}
           disabled={!directoryContent?.parentPath}
@@ -294,7 +346,7 @@ const MyDrive: React.FC = () => {
             </div>
           )}
         </div>
-        
+
         {filesLoading ? (
           <div className={styles.loadingState}>
             <i className="fas fa-spinner fa-spin"></i>
@@ -309,20 +361,19 @@ const MyDrive: React.FC = () => {
         ) : directoryContent ? (
           <div className={viewMode === 'grid' ? styles.itemsGrid : styles.itemsList}>
             {directoryContent.items.map((item, index) => (
-              <div 
+              <div
                 key={item.path}
-                className={`${
-                  viewMode === 'grid' ? styles.itemCard : styles.itemRow
-                } ${selectedItems.has(item.path) ? styles.selected : ''}`}
+                className={`${viewMode === 'grid' ? styles.itemCard : styles.itemRow
+                  } ${selectedItems.has(item.path) ? styles.selected : ''}`}
                 onClick={(e) => {
-                  e.preventDefault();
-                  // Apenas navega para diretório ou abre arquivo, sem selecionar
-                  if (item.type === 'directory') {
-                    navigateToDirectory(item.path);
+                  if (selectMode) {
+                    // No modo seleção, apenas seleciona/deseleciona
+                    selectItem(item.path, index, e);
                   } else {
-                    // Abrir popup de visualização para arquivos suportados
-                    const ext = (item.extension || '').replace('.', '').toLowerCase();
-                    if (["json", "txt", "pdf", "docx"].includes(ext)) {
+                    // Comportamento normal
+                    if (item.type === 'directory') {
+                      navigateToDirectory(item.path);
+                    } else {
                       setPreviewFile(item);
                     }
                   }
@@ -330,11 +381,11 @@ const MyDrive: React.FC = () => {
                 onContextMenu={(e) => handleContextMenu(e, item.path)}
               >
                 <div className={styles.itemIcon}>
-                  <i 
+                  <i
                     className={item.icon}
                     style={{
-                      color: item.type === 'directory' && item.folderColor 
-                        ? item.folderColor 
+                      color: item.type === 'directory' && item.folderColor
+                        ? item.folderColor
                         : undefined
                     }}
                   ></i>
@@ -376,7 +427,7 @@ const MyDrive: React.FC = () => {
                     </>
                   )}
                 </div>
-                <button 
+                <button
                   className={styles.itemMoreBtn}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -418,21 +469,12 @@ const MyDrive: React.FC = () => {
           <FilePreview path={previewFile.path} extension={previewFile.extension} />
         )}
       </PopupDefault>
-      
+
       {/* Overlay para fechar contexto ao clicar fora */}
-      <div 
+      <div
         className={styles.contextOverlay}
         onContextMenu={handleContextMenu}
         style={{ display: contextMenu.isOpen ? 'none' : 'block' }}
-      />
-
-      {/* Barra de colar persistente */}
-      <PasteBar
-        isVisible={showPasteBar}
-        operation={clipboard.operation}
-        items={clipboard.items}
-        onPaste={handlePaste}
-        onCancel={handleCancelPaste}
       />
     </div>
   );

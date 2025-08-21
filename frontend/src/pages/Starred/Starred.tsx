@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import styles from "./Starred.module.scss";
 import { useFileSystem } from "../../hooks/useFileSystem";
+import { useNavigate } from 'react-router-dom';
 
 const Starred: React.FC = () => {
   const [starredFiles, setStarredFiles] = useState<any[]>([]);
@@ -35,9 +36,26 @@ const Starred: React.FC = () => {
   }, [refreshTrigger]);
 
   // Handler para favoritar/desfavoritar e atualizar favoritos
-  const handleToggleStar = async (itemPath: string) => {
-    await toggleStar(itemPath);
-    setRefreshTrigger(t => t + 1);
+  const handleToggleStar = async () => {
+    const items = getSelectedItemsData();
+    if (items.length !== 1) {
+      console.warn('Selecione apenas um item para favoritar');
+      return;
+    }
+
+    try {
+      const isStarred = await toggleStar(items[0].path);
+      console.log('Status de favorito atualizado para:', items[0].name);
+      refresh();
+
+      // Se foi favoritado, navegar para a página de favoritos
+      if (isStarred) {
+        navigate('/favoritos');
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar favorito:', error);
+      alert('Erro ao atualizar favorito.');
+    }
   };
 
   return (
