@@ -27,12 +27,6 @@ router.post("/copy", FileSystemController.copyItem);
 // POST /api/files/toggle-star - Favoritar/desfavoritar item
 router.post("/toggle-star", FileSystemController.toggleStar);
 
-// POST /api/files/set-folder-color - Definir cor da pasta
-router.post("/set-folder-color", FileSystemController.setFolderColor);
-
-// GET /api/files/read?path=C:\arquivo.txt - Ler conteúdo de arquivo
-router.get("/read", FileSystemController.readFile);
-
 // GET /api/files/read?path=C:\arquivo.txt - Ler conteúdo de arquivo
 router.get("/read", FileSystemController.readFile);
 

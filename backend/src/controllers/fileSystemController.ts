@@ -126,8 +126,7 @@ export class FileSystemController {
 
       res.status(500).json({
         success: false,
-        message:
-          error instanceof Error ? error.message : "Erro ao excluir item",
+        message: error instanceof Error ? error.message : "Erro ao excluir item",
         timestamp: new Date().toISOString(),
       });
     }
@@ -158,8 +157,7 @@ export class FileSystemController {
 
       res.status(500).json({
         success: false,
-        message:
-          error instanceof Error ? error.message : "Erro ao renomear item",
+        message: error instanceof Error ? error.message : "Erro ao renomear item",
         timestamp: new Date().toISOString(),
       });
     }
@@ -260,48 +258,6 @@ export class FileSystemController {
         success: false,
         message:
           error instanceof Error ? error.message : "Erro ao favoritar item",
-        timestamp: new Date().toISOString(),
-      });
-    }
-  }
-
-  static async setFolderColor(req: Request, res: Response): Promise<void> {
-    try {
-      const { path: folderPath, color } = req.body;
-
-      if (!folderPath) {
-        res.status(400).json({
-          success: false,
-          message: "Caminho da pasta é obrigatório",
-        });
-        return;
-      }
-
-      // Permitir cor vazia para remover a cor
-      const colorValue = color || "";
-
-      const result = await FileSystemService.setFolderColor(
-        folderPath,
-        colorValue
-      );
-
-      res.status(200).json({
-        success: true,
-        data: { colorSet: result },
-        message: colorValue
-          ? "Cor da pasta alterada com sucesso"
-          : "Cor da pasta removida com sucesso",
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error("Erro ao definir cor da pasta:", error);
-
-      res.status(500).json({
-        success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Erro ao definir cor da pasta",
         timestamp: new Date().toISOString(),
       });
     }
