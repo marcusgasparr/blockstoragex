@@ -1,5 +1,5 @@
 import React from 'react';
-import PopupDefault from '../../../layouts/LayoutDefault/PopupDefault';
+import PopupDefault from '../../../layouts/PopupDefault/PopupDefault';
 import styles from './HelpPopup.module.scss';
 
 interface HelpPopupProps {

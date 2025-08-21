@@ -1,6 +1,6 @@
 import React from 'react';
 import styles from './PasteBar.module.scss';
-import { FileSystemItem } from '../../../../services/fileSystemService';
+import { FileSystemItem } from '../../services/fileSystemService';
 
 interface PasteBarProps {
     isVisible: boolean;

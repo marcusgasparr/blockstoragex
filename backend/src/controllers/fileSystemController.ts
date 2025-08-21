@@ -1,5 +1,22 @@
 import { Request, Response } from "express";
 import { FileSystemService } from "../services/fileSystemService";
+import multer from "multer";
+import path from "path";
+import { promises as fs } from "fs";
+
+// Configurar multer para upload (fora da classe)
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadPath = req.body.path || "G:\\";
+      cb(null, uploadPath);
+    },
+    filename: (req, file, cb) => {
+      // Manter o nome original do arquivo
+      cb(null, file.originalname);
+    },
+  }),
+});
 
 export class FileSystemController {
   // Endpoint para buscar todos os favoritos do disco
@@ -252,20 +269,28 @@ export class FileSystemController {
     try {
       const { path: folderPath, color } = req.body;
 
-      if (!folderPath || !color) {
+      if (!folderPath) {
         res.status(400).json({
           success: false,
-          message: "Caminho da pasta e cor são obrigatórios",
+          message: "Caminho da pasta é obrigatório",
         });
         return;
       }
 
-      const result = await FileSystemService.setFolderColor(folderPath, color);
+      // Permitir cor vazia para remover a cor
+      const colorValue = color || "";
+
+      const result = await FileSystemService.setFolderColor(
+        folderPath,
+        colorValue
+      );
 
       res.status(200).json({
         success: true,
         data: { colorSet: result },
-        message: "Cor da pasta alterada com sucesso",
+        message: colorValue
+          ? "Cor da pasta alterada com sucesso"
+          : "Cor da pasta removida com sucesso",
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
@@ -282,6 +307,7 @@ export class FileSystemController {
     }
   }
 
+  // método para ler arquivo
   static async readFile(req: Request, res: Response): Promise<void> {
     try {
       const { path: filePath } = req.query;
@@ -372,3 +398,95 @@ export class FileSystemController {
     }
   }
 }
+
+// Funções de upload exportadas separadamente (fora da classe)
+export const uploadFile = [
+  upload.single("file"),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      if (!req.file) {
+        res.status(400).json({
+          success: false,
+          message: "Nenhum arquivo fornecido",
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: {
+          filename: req.file.filename,
+          path: req.file.path,
+          size: req.file.size,
+        },
+        message: "Arquivo enviado com sucesso",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Erro no upload:", error);
+
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Erro no upload",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  },
+];
+
+export const uploadFolder = [
+  upload.array("file"),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const files = req.files as Express.Multer.File[];
+
+      if (!files || files.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: "Nenhum arquivo fornecido",
+        });
+        return;
+      }
+
+      const uploadPath = req.body.path || "G:\\";
+      const uploadedFiles = [];
+
+      for (const file of files) {
+        const relativePath = req.body.relativePath || file.originalname;
+        const fullPath = path.join(uploadPath, relativePath);
+
+        // Criar diretórios se necessário
+        const dir = path.dirname(fullPath);
+        await fs.mkdir(dir, { recursive: true });
+
+        // Mover arquivo para o local correto
+        await fs.rename(file.path, fullPath);
+
+        uploadedFiles.push({
+          filename: file.originalname,
+          path: fullPath,
+          size: file.size,
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: {
+          files: uploadedFiles,
+          count: uploadedFiles.length,
+        },
+        message: "Pasta enviada com sucesso",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Erro no upload da pasta:", error);
+
+      res.status(500).json({
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Erro no upload da pasta",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  },
+];

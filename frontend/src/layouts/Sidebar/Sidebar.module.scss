@@ -1,4 +1,4 @@
-@use '../../../../styles/variables.scss' as *;
+@use "../../styles/variables.scss" as *;
 
 .sidebar {
   width: var(--sidebar-width);
@@ -11,6 +11,8 @@
 }
 
 .newButton {
+  position: relative;
+
   .newBtn {
     display: flex;
     align-items: center;
@@ -25,14 +27,63 @@
     cursor: pointer;
     transition: var(--transition-fast);
     width: 100%;
-    
+
     &:hover {
       background-color: var(--bg-hover);
       box-shadow: var(--shadow-sm);
     }
-    
+
     i {
       font-size: 16px;
+    }
+
+    .chevron {
+      margin-left: auto;
+      font-size: 12px;
+      transition: var(--transition-fast);
+    }
+  }
+
+  .dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+
+  .dropdownItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+
+    &:hover {
+      background: var(--bg-hover);
+    }
+
+    i {
+      font-size: 14px;
+      width: 16px;
+      color: var(--text-secondary);
+    }
+
+    span {
+      flex: 1;
+      text-align: left;
     }
   }
 }
@@ -53,28 +104,28 @@
   text-decoration: none;
   font-size: 14px;
   transition: var(--transition-fast);
-  
+
   &:hover {
     background-color: var(--bg-hover);
     color: var(--text-primary);
   }
-  
+
   &.active {
     background-color: var(--primary-color);
     color: white;
     font-weight: 500;
-    
+
     &:hover {
       background-color: var(--primary-hover);
     }
   }
-  
+
   .icon {
     font-size: 16px;
     width: 20px;
     text-align: center;
   }
-  
+
   .label {
     flex: 1;
   }
@@ -94,25 +145,29 @@
 .storageInfo {
   margin-bottom: 12px;
   width: 100%;
-  
+
   .storageText {
     font-size: 12px;
     color: var(--text-secondary);
     margin: 0 0 8px 0;
     text-align: start;
   }
-  
+
   .storageBar {
     width: 100%;
     height: 4px;
     background-color: var(--bg-primary);
     border-radius: 2px;
     overflow: hidden;
-    
+
     .storageProgress {
       width: 14%;
       height: 100%;
-      background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+      background: linear-gradient(
+        90deg,
+        var(--primary-color),
+        var(--success-color)
+      );
     }
   }
 }
@@ -127,7 +182,7 @@
   font-size: 12px;
   cursor: pointer;
   transition: var(--transition-fast);
-  
+
   &:hover {
     // background-color: var(--bg-hover);
     // color: var(--text-primary);

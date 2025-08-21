@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { FileSystemController } from "../controllers/fileSystemController";
+import { FileSystemController, uploadFile, uploadFolder } from "../controllers/fileSystemController";
 
 const router = Router();
 
@@ -41,5 +41,11 @@ router.get("/download", FileSystemController.downloadFile);
 
 // GET /api/files/search?query=arquivo&rootPath=H:\ - Buscar arquivos globalmente
 router.get("/search", FileSystemController.searchFiles);
+
+// POST /api/files/upload - Upload de arquivo
+router.post("/upload", uploadFile);
+
+// POST /api/files/upload-folder - Upload de pasta
+router.post("/upload-folder", uploadFolder);
 
 export default router;

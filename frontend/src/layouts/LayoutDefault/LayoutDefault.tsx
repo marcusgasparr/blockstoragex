@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import Sidebar from './components/Sidebar/Sidebar';
-import TopBar from './components/TopBar/TopBar';
+import Sidebar from '../Sidebar/Sidebar';
+import TopBar from '../TopBar/TopBar';
 import SettingsPopup from '../../pages/components/SettingsPopup/SettingsPopup';
 import HelpPopup from '../../pages/components/HelpPopup/HelpPopup';
 import styles from './LayoutDefault.module.scss';

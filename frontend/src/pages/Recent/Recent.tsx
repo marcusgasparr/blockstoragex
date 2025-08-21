@@ -4,7 +4,7 @@ import { useFileSystem } from "../../hooks/useFileSystem";
 import { useNavigate } from 'react-router-dom';
 import { ContextMenu } from "../../components/ContextMenu/ContextMenu";
 import FilePreview from "../../components/FilePreview/FilePreview";
-import PopupDefault from "../../layouts/LayoutDefault/PopupDefault";
+import PopupDefault from "../../layouts/PopupDefault/PopupDefault";
 import { FileSystemItem } from "../../services/fileSystemService";
 
 interface RecentProps {

@@ -12,20 +12,16 @@
 
 .contextMenu {
   position: fixed;
-  z-index: 999;
   background: var(--bg-primary);
   border: 1px solid var(--border-light);
-  border-radius: 12px;
-  box-shadow: 
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06),
-    0 0 0 1px rgba(0, 0, 0, 0.05);
-  min-width: 240px;
+  border-radius: var(--border-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 10001;
+  min-width: 200px;
   max-width: 280px;
-  max-height: calc(100vh - 32px);
-  overflow: hidden;
-  animation: contextMenuAppear 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  backdrop-filter: blur(8px);
+  overflow: visible;
+  animation: contextMenuAppear 0.15s ease-out;
+  max-height: calc(100vh - 40px);
 }
 
 @keyframes contextMenuAppear {
@@ -42,7 +38,11 @@
 .menuHeader {
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-light);
-  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-hover) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--bg-secondary) 0%,
+    var(--bg-hover) 100%
+  );
 
   .itemInfo {
     display: flex;
@@ -104,8 +104,8 @@
 }
 
 .menuContent {
-  padding: 8px 0;
   overflow-y: auto;
+  overflow-x: visible;
   max-height: calc(100vh - 120px);
 }
 
@@ -161,15 +161,18 @@
     padding: 2px 6px;
     font-size: 10px;
     color: var(--text-muted);
-    font-family: 'Consolas', 'Monaco', monospace;
+    font-family: "Consolas", "Monaco", monospace;
     font-weight: normal;
     letter-spacing: 0.5px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   }
 
-  // Variantes
   &.primary {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+    background: linear-gradient(
+      135deg,
+      var(--primary-color),
+      var(--primary-hover)
+    );
     color: white;
 
     i {
@@ -183,7 +186,11 @@
     }
 
     &:hover {
-      background: linear-gradient(135deg, var(--primary-hover), var(--primary-color));
+      background: linear-gradient(
+        135deg,
+        var(--primary-hover),
+        var(--primary-color)
+      );
       transform: translateX(2px) translateY(-1px);
       box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
     }
@@ -217,12 +224,17 @@
 
 .separator {
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border-light), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--border-light),
+    transparent
+  );
   margin: 6px 12px;
   position: relative;
 
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 50%;
     top: 50%;
@@ -236,36 +248,27 @@
 
 .submenuContainer {
   position: relative;
-
-  &:hover .hasSubmenu .fa-chevron-right {
-    transform: rotate(90deg);
-  }
+  overflow: visible;
 }
 
 .submenu {
   position: absolute;
-  left: 100%;
+  left: calc(100% + 8px);
   top: 0;
   background: var(--bg-primary);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
-  box-shadow: 
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  min-width: 200px;
-  z-index: 1000;
-  animation: submenuAppear 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-  margin-left: 4px;
-}
+  border-radius: var(--border-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 10003;
+  min-width: 240px;
+  animation: submenuSlideIn 0.15s ease-out;
+  opacity: 1;
+  visibility: visible;
 
-@keyframes submenuAppear {
-  from {
-    opacity: 0;
-    transform: translateX(-8px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
+  &.leftSide {
+    left: auto;
+    right: calc(100% + 8px);
+    animation: submenuSlideInLeft 0.15s ease-out;
   }
 }
 
@@ -286,14 +289,14 @@
 .colorGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  padding: 12px;
+  gap: 8px;
+  padding: 16px;
 }
 
 .colorOption {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
   border: 2px solid white;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -317,7 +320,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 12px;
+    font-size: 16px;
     opacity: 0;
     transition: opacity 0.2s ease;
   }
@@ -351,7 +354,7 @@
   }
 }
 
-// Animações especiais
+// Animações
 @keyframes starGlow {
   0%, 100% {
     opacity: 1;
@@ -360,6 +363,28 @@
   50% {
     opacity: 0.7;
     transform: scale(1.1);
+  }
+}
+
+@keyframes submenuSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes submenuSlideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
@@ -380,7 +405,7 @@
     }
 
     kbd {
-      display: none; // Ocultar atalhos no mobile
+      display: none;
     }
   }
 
@@ -393,47 +418,5 @@
   .colorOption {
     width: 36px;
     height: 36px;
-  }
-}
-
-// Estados de loading para itens que fazem ações assíncronas
-.menuItem.loading {
-  pointer-events: none;
-  opacity: 0.6;
-
-  i {
-    animation: spin 1s linear infinite;
-  }
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-// Estilos especiais para diferentes tipos de ação
-.menuItem {
-  &[data-action="copy"] i {
-    color: #28a745;
-  }
-
-  &[data-action="cut"] i {
-    color: #ffc107;
-  }
-
-  &[data-action="delete"] i {
-    color: #dc3545;
-  }
-
-  &[data-action="star"] i {
-    color: #ffc107;
-  }
-
-  &[data-action="download"] i {
-    color: #007bff;
   }
 }

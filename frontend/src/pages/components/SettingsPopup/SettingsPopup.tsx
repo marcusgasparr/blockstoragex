@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import PopupDefault from '../../../layouts/LayoutDefault/PopupDefault';
+import PopupDefault from '../../../layouts/PopupDefault/PopupDefault';
 import { diskService } from '../../../services/diskService';
 import styles from './SettingsPopup.module.scss';
 

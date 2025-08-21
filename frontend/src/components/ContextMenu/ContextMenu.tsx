@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { FileSystemItem } from '../../services/fileSystemService';
 import styles from './ContextMenu.module.scss';
+import { FileSystemItem } from '../../services/fileSystemService';
 
-interface ExtraAction {
-  label: string;
+export interface ExtraAction {
   icon: string;
+  label: string;
   action: () => void;
-  variant?: 'default' | 'danger' | 'primary';
+  disabled?: boolean;
 }
 
 interface ContextMenuProps {
   isOpen: boolean;
   position: { x: number; y: number };
-  onClose: () => void;
   selectedItems: FileSystemItem[];
+  onClose: () => void;
   onNewFolder?: () => void;
   onRename?: (itemPath: string) => void;
   onDelete?: () => void;
@@ -48,10 +48,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 }) => {
   const [adjustedPosition, setAdjustedPosition] = useState(position);
   const [showColorSubmenu, setShowColorSubmenu] = useState(false);
+  const [submenuOnLeft, setSubmenuOnLeft] = useState(false);
+  const [hoverTimeout, setHoverTimeout] = useState<number | null>(null);
 
   const selectedItem = selectedItems[0];
   const isMultipleSelection = selectedItems.length > 1;
 
+  // Effect para reposicionar o menu principal
   useEffect(() => {
     if (isOpen) {
       requestAnimationFrame(() => {
@@ -60,35 +63,101 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
           const rect = menu.getBoundingClientRect();
           const viewportWidth = window.innerWidth;
           const viewportHeight = window.innerHeight;
-          
+
           let newX = position.x;
           let newY = position.y;
-          
-          // Ajustar horizontalmente se sair da tela
-          if (position.x + rect.width > viewportWidth) {
-            newX = viewportWidth - rect.width - 16;
+
+          // Ajustar horizontalmente se sair da tela pela direita
+          if (position.x + rect.width > viewportWidth - 20) {
+            newX = position.x - rect.width; // Abrir para a esquerda
           }
-          
-          // Ajustar verticalmente se sair da tela
-          if (position.y + rect.height > viewportHeight) {
-            newY = viewportHeight - rect.height - 16;
+
+          // Ajustar verticalmente se sair da tela por baixo
+          if (position.y + rect.height > viewportHeight - 20) {
+            newY = position.y - rect.height; // Abrir para cima
           }
-          
-          // Garantir que não fique com valores negativos
-          newX = Math.max(16, newX);
-          newY = Math.max(16, newY);
-          
+
+          // Garantir que não fique fora da tela pela esquerda
+          if (newX < 20) {
+            newX = 20;
+          }
+
+          // Garantir que não fique fora da tela por cima
+          if (newY < 20) {
+            newY = 20;
+          }
+
+          // Se ainda estiver saindo da tela pela direita após ajustar para esquerda
+          if (newX + rect.width > viewportWidth - 20) {
+            newX = viewportWidth - rect.width - 20;
+          }
+
+          // Se ainda estiver saindo da tela por baixo após ajustar para cima
+          if (newY + rect.height > viewportHeight - 20) {
+            newY = viewportHeight - rect.height - 20;
+          }
+
           setAdjustedPosition({ x: newX, y: newY });
         }
       });
     }
   }, [isOpen, position]);
 
+  // Effect para reposicionar o submenu de cores
+  useEffect(() => {
+    if (showColorSubmenu && isOpen) {
+      requestAnimationFrame(() => {
+        const viewportWidth = window.innerWidth;
+        const menuWidth = 280; // Largura máxima do menu principal
+        const submenuWidth = 240; // Largura do submenu
+
+        // Verificar se o submenu precisa abrir para a esquerda
+        if (adjustedPosition.x + menuWidth + submenuWidth > viewportWidth - 20) {
+          setSubmenuOnLeft(true);
+        } else {
+          setSubmenuOnLeft(false);
+        }
+      });
+    }
+  }, [showColorSubmenu, isOpen, adjustedPosition.x]);
+
+  // Cleanup do timeout ao desmontar
+  useEffect(() => {
+    return () => {
+      if (hoverTimeout) {
+        window.clearTimeout(hoverTimeout);
+      }
+    };
+  }, [hoverTimeout]);
+
   if (!isOpen) return null;
 
   const handleAction = (action: () => void) => {
     action();
     onClose();
+  };
+
+  // Funções para controlar o submenu com delay
+  const handleSubmenuEnter = () => {
+    if (hoverTimeout) {
+      window.clearTimeout(hoverTimeout);
+      setHoverTimeout(null);
+    }
+    setShowColorSubmenu(true);
+  };
+
+  const handleSubmenuLeave = () => {
+    const timeout = window.setTimeout(() => {
+      setShowColorSubmenu(false);
+    }, 150); // Delay de 150ms para dar tempo de mover o mouse
+    setHoverTimeout(timeout);
+  };
+
+  const handleRemoveColor = () => {
+    if (selectedItem && onSetColor) {
+      // Enviar string vazia ou null para remover a cor
+      handleAction(() => onSetColor(selectedItem.path, ''));
+    }
   };
 
   const colors = [
@@ -235,19 +304,23 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
           {/* Cor da pasta */}
           {selectedItem && selectedItem.type === 'directory' && onSetColor && (
-            <div 
+            <div
               className={styles.submenuContainer}
-              onMouseEnter={() => setShowColorSubmenu(true)}
-              onMouseLeave={() => setShowColorSubmenu(false)}
+              onMouseEnter={handleSubmenuEnter}
+              onMouseLeave={handleSubmenuLeave}
             >
               <button className={`${styles.menuItem} ${styles.hasSubmenu}`}>
                 <i className="fas fa-palette"></i>
                 <span>Cor da pasta</span>
                 <i className="fas fa-chevron-right"></i>
               </button>
-              
+
               {showColorSubmenu && (
-                <div className={styles.submenu}>
+                <div
+                  className={`${styles.submenu} ${submenuOnLeft ? styles.leftSide : ''}`}
+                  onMouseEnter={handleSubmenuEnter}
+                  onMouseLeave={handleSubmenuLeave}
+                >
                   <div className={styles.submenuHeader}>
                     <span>Escolher cor</span>
                   </div>
@@ -266,30 +339,15 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                   </div>
                   <button
                     className={styles.removeColorBtn}
-                    onClick={() => handleAction(() => onSetColor!(selectedItem.path, ''))}
+                    onClick={handleRemoveColor}
                   >
-                    <i className="fas fa-times"></i>
-                    <span>Remover cor</span>
+                    <i className="fas fa-ban"></i>
+                    Remover cor
                   </button>
                 </div>
               )}
             </div>
           )}
-
-          {/* Separador */}
-          <div className={styles.separator}></div>
-
-          {/* Ações extras */}
-          {extraActions.map((action, index) => (
-            <button
-              key={index}
-              className={`${styles.menuItem} ${styles[action.variant || 'default']}`}
-              onClick={() => handleAction(action.action)}
-            >
-              <i className={action.icon}></i>
-              <span>{action.label}</span>
-            </button>
-          ))}
 
           {/* Nova pasta */}
           {onNewFolder && (
@@ -303,19 +361,32 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             </button>
           )}
 
+          {/* Separador */}
+          {onDelete && <div className={styles.separator}></div>}
+
+          {/* Ações extras */}
+          {extraActions.map((action, index) => (
+            <button
+              key={index}
+              className={`${styles.menuItem} ${action.disabled ? styles.disabled : ''}`}
+              onClick={() => handleAction(action.action)}
+              disabled={action.disabled}
+            >
+              <i className={action.icon}></i>
+              <span>{action.label}</span>
+            </button>
+          ))}
+
           {/* Excluir */}
           {onDelete && (
-            <>
-              <div className={styles.separator}></div>
-              <button
-                className={`${styles.menuItem} ${styles.danger}`}
-                onClick={() => handleAction(onDelete)}
-              >
-                <i className="fas fa-trash"></i>
-                <span>Excluir</span>
-                <kbd>Del</kbd>
-              </button>
-            </>
+            <button
+              className={`${styles.menuItem} ${styles.danger}`}
+              onClick={() => handleAction(onDelete)}
+            >
+              <i className="fas fa-trash"></i>
+              <span>Excluir</span>
+              <kbd>Delete</kbd>
+            </button>
           )}
         </div>
       </div>

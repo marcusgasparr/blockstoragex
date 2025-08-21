@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import styles from './MyDrive.module.scss';
 import { useFileSystem } from '../../hooks/useFileSystem';
 import { ContextMenu } from '../../components/ContextMenu/ContextMenu';
-import { PasteBar } from '../../layouts/LayoutDefault/components/PasteBar/PasteBar';
+import { PasteBar } from '../../layouts/PasteBar/PasteBar';
 import FilePreview from '../../components/FilePreview/FilePreview';
-import PopupDefault from '../../layouts/LayoutDefault/PopupDefault';
+import PopupDefault from '../../layouts/PopupDefault/PopupDefault';
+import PopupInputNewFolder from '../../layouts/PopupInputNewFolder/PopupInputNewFolder';
 import { FileSystemItem } from '../../services/fileSystemService';
 import { useSearchParams } from 'react-router-dom';
+import PopupConfirmDelete from '../../layouts/PopupConfirmDelete/PopupConfirmDelete';
 
 interface MyDriveProps {
   onSearchCallback?: (callback: (query: string) => void) => void;
@@ -18,6 +20,12 @@ const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive }) => 
   console.log('🏠 MyDrive usando disco:', effectiveDrive);
 
   const [searchParams, setSearchParams] = useSearchParams();
+
+  //Popup de Nova Pasta
+  const [showNewFolderPopup, setShowNewFolderPopup] = useState(false);
+
+  //Popup de Exclusão
+  const [showDeletePopup, setShowDeletePopup] = useState(false);
 
   // Estados para busca global
   const [globalSearchResults, setGlobalSearchResults] = useState<FileSystemItem[]>([]);
@@ -234,11 +242,13 @@ const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive }) => 
   };
 
   const handleNewFolder = async () => {
-    const name = prompt('Nome da nova pasta:');
-    if (name) {
-      await createDirectory(name);
-    }
+    setShowNewFolderPopup(true);
     closeContextMenu();
+  };
+
+  const handleCreateFolder = async (name: string) => {
+    await createDirectory(name);
+    setShowNewFolderPopup(false);
   };
 
   const handleRename = (itemPath: string) => {
@@ -263,10 +273,13 @@ const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive }) => 
   };
 
   const handleDelete = async () => {
-    if (selectedItems.size > 0 && confirm(`Excluir ${selectedItems.size} item(s)?`)) {
-      await deleteSelectedItems();
-    }
+    setShowDeletePopup(true);
     closeContextMenu();
+  };
+
+  const confirmDelete = async () => {
+    await deleteSelectedItems();
+    setShowDeletePopup(false);
   };
 
   const handleCopy = () => {
@@ -631,6 +644,25 @@ const MyDrive: React.FC<MyDriveProps> = ({ onSearchCallback, currentDrive }) => 
           onClick={() => setShowTypeDropdown(false)}
         ></div>
       )}
+
+      {/* Popup para nova pasta */}
+      <PopupInputNewFolder
+        isOpen={showNewFolderPopup}
+        title="Nova pasta"
+        placeholder="Pasta sem nome"
+        confirmText="Criar"
+        onClose={() => setShowNewFolderPopup(false)}
+        onConfirm={handleCreateFolder}
+      />
+
+      {/* Popup para confirmar exclusão */}
+      <PopupConfirmDelete
+        isOpen={showDeletePopup}
+        itemName={getSelectedItemsData()[0]?.name || ''}
+        itemCount={selectedItems.size}
+        onClose={() => setShowDeletePopup(false)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 };
