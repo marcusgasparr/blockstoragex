@@ -29,15 +29,24 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClose }) => {
     try {
       // Verificar se é um arquivo de texto
       const textExtensions = ['.txt', '.md', '.json', '.xml', '.css', '.js', '.html', '.csv'];
-      const isTextFile = textExtensions.some(ext => 
+      const isTextFile = textExtensions.some(ext =>
         file.extension?.toLowerCase() === ext
       );
+
+      // Verificar se é arquivo de mídia (imagem, vídeo, áudio)
+      const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp'];
+      const videoExtensions = ['.mp4', '.avi', '.mov', '.wmv', '.mkv', '.webm'];
+      const audioExtensions = ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma'];
+
+      const isImageFile = imageExtensions.indexOf(file.extension?.toLowerCase() || '') !== -1;
+      const isVideoFile = videoExtensions.indexOf(file.extension?.toLowerCase() || '') !== -1;
+      const isAudioFile = audioExtensions.indexOf(file.extension?.toLowerCase() || '') !== -1;
 
       if (isTextFile) {
         const response = await fetch(
           `http://localhost:3001/api/files/read?path=${encodeURIComponent(file.path)}`
         );
-        
+
         if (!response.ok) {
           throw new Error('Erro ao carregar arquivo');
         }
@@ -48,6 +57,10 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClose }) => {
         } else {
           throw new Error(data.message || 'Erro ao carregar conteúdo');
         }
+      } else if (isImageFile || isVideoFile || isAudioFile) {
+        // Para arquivos de mídia, não precisamos carregar conteúdo via API
+        // O navegador irá carregar diretamente via URL
+        setContent('media-preview');
       } else {
         setError('Tipo de arquivo não suportado para visualização');
       }
@@ -61,7 +74,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClose }) => {
 
   const getFileTypeInfo = () => {
     const ext = file.extension?.toLowerCase();
-    
+
     switch (ext) {
       case '.txt':
         return { type: 'Texto', icon: 'fas fa-file-alt' };
@@ -85,7 +98,24 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClose }) => {
       case '.jpeg':
       case '.png':
       case '.gif':
+      case '.bmp':
+      case '.svg':
+      case '.webp':
         return { type: 'Imagem', icon: 'fas fa-image' };
+      case '.mp4':
+      case '.avi':
+      case '.mov':
+      case '.wmv':
+      case '.mkv':
+      case '.webm':
+        return { type: 'Vídeo', icon: 'fas fa-video' };
+      case '.mp3':
+      case '.wav':
+      case '.flac':
+      case '.aac':
+      case '.ogg':
+      case '.wma':
+        return { type: 'Áudio', icon: 'fas fa-music' };
       default:
         return { type: 'Arquivo', icon: 'fas fa-file' };
     }
@@ -110,12 +140,11 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClose }) => {
 
   return (
     <div className={styles.filePreview}>
-      {/* Header */}
+      {/* Header simplificado */}
       <div className={styles.header}>
         <div className={styles.fileInfo}>
           <i className={`${fileInfo.icon} ${styles.fileIcon}`}></i>
           <div className={styles.details}>
-            <h3 className={styles.fileName}>{file.name}</h3>
             <div className={styles.metadata}>
               <span>{fileInfo.type}</span>
               <span>•</span>
@@ -132,13 +161,6 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClose }) => {
             title="Download"
           >
             <i className="fas fa-download"></i>
-          </button>
-          <button
-            className={styles.actionBtn}
-            onClick={onClose}
-            title="Fechar"
-          >
-            <i className="fas fa-times"></i>
           </button>
         </div>
       </div>
@@ -165,10 +187,12 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClose }) => {
         ) : (
           <div className={styles.fileContent}>
             {/* Visualização de imagem */}
-            {file.extension && ['.jpg', '.jpeg', '.png', '.gif', '.bmp'].includes(file.extension.toLowerCase()) ? (
+            {/* Visualização de imagem */}
+            {/* Visualização de imagem */}
+            {file.extension && ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp'].indexOf(file.extension.toLowerCase()) !== -1 ? (
               <div className={styles.imagePreview}>
                 <img
-                  src={`http://localhost:3001/api/files/read?path=${encodeURIComponent(file.path)}`}
+                  src={`http://localhost:3001/api/files/download?path=${encodeURIComponent(file.path)}`}
                   alt={file.name}
                   className={styles.image}
                   onError={(e) => {
@@ -178,23 +202,55 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClose }) => {
                   }}
                 />
               </div>
-            ) : content ? (
-              /* Visualização de texto */
-              <div className={styles.textPreview}>
-                <pre className={styles.textContent}>{content}</pre>
-              </div>
-            ) : (
-              /* Fallback */
-              <div className={styles.noPreview}>
-                <i className={`${fileInfo.icon} ${styles.largeIcon}`}></i>
-                <h4>Visualização não disponível</h4>
-                <p>Este tipo de arquivo não pode ser visualizado diretamente.</p>
-                <button onClick={handleDownload} className={styles.downloadBtn}>
-                  <i className="fas fa-download"></i>
-                  Fazer download para abrir
-                </button>
-              </div>
-            )}
+            ) :
+              /* Visualização de vídeo */
+              file.extension && ['.mp4', '.avi', '.mov', '.wmv', '.mkv', '.webm'].indexOf(file.extension.toLowerCase()) !== -1 ? (
+                <div className={styles.videoPreview}>
+                  <video
+                    src={`http://localhost:3001/api/files/download?path=${encodeURIComponent(file.path)}`}
+                    className={styles.video}
+                    controls
+                    preload="metadata"
+                    onError={() => setError('Erro ao carregar vídeo')}
+                  >
+                    Seu navegador não suporta a reprodução de vídeo.
+                  </video>
+                </div>
+              ) :
+                /* Visualização de áudio */
+                file.extension && ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma'].indexOf(file.extension.toLowerCase()) !== -1 ? (
+                  <div className={styles.audioPreview}>
+                    <div className={styles.audioInfo}>
+                      <i className="fas fa-music"></i>
+                      <span>{file.name}</span>
+                    </div>
+                    <audio
+                      src={`http://localhost:3001/api/files/download?path=${encodeURIComponent(file.path)}`}
+                      className={styles.audio}
+                      controls
+                      preload="metadata"
+                      onError={() => setError('Erro ao carregar áudio')}
+                    >
+                      Seu navegador não suporta a reprodução de áudio.
+                    </audio>
+                  </div>
+                ) : content ? (
+                  /* Visualização de texto */
+                  <div className={styles.textPreview}>
+                    <pre className={styles.textContent}>{content}</pre>
+                  </div>
+                ) : (
+                  /* Fallback */
+                  <div className={styles.noPreview}>
+                    <i className={`${fileInfo.icon} ${styles.largeIcon}`}></i>
+                    <h4>Visualização não disponível</h4>
+                    <p>Este tipo de arquivo não pode ser visualizado diretamente.</p>
+                    <button onClick={handleDownload} className={styles.downloadBtn}>
+                      <i className="fas fa-download"></i>
+                      Fazer download para abrir
+                    </button>
+                  </div>
+                )}
           </div>
         )}
       </div>

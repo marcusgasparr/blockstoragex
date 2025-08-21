@@ -68,71 +68,69 @@ export const useFileSystem = (initialPath: string = 'G:\\') => {
   }, [directoryContent]);
 
   const selectItem = useCallback((itemPath: string, index: number, event?: React.MouseEvent) => {
-    setSelectedItems(prev => {
-      const newSelection = new Set(prev);
-      
-      if (event?.ctrlKey) {
-        // Ctrl+Click: adicionar/remover item individual
-        if (newSelection.has(itemPath)) {
-          newSelection.delete(itemPath);
-        } else {
-          newSelection.add(itemPath);
-        }
-        setLastClickedIndex(index);
-      } else if (event?.shiftKey && lastClickedIndex !== null) {
-        // Shift+Click: selecionar range
-        selectRange(lastClickedIndex, index);
-        return selectedItems;
+    if (!directoryContent) return;
+
+    if (event?.ctrlKey) {
+      // Seleção múltipla com Ctrl
+      const newSelection = new Set(selectedItems);
+      if (newSelection.has(itemPath)) {
+        newSelection.delete(itemPath);
       } else {
-        // Click normal: selecionar apenas este item
-        newSelection.clear();
         newSelection.add(itemPath);
-        setLastClickedIndex(index);
       }
-      
-      return newSelection;
-    });
-  }, [selectRange, selectedItems, lastClickedIndex]);
+      setSelectedItems(newSelection);
+      setLastClickedIndex(index);
+    } else if (event?.shiftKey && lastClickedIndex !== null) {
+      // Seleção em intervalo com Shift
+      selectRange(lastClickedIndex, index);
+    } else {
+      // Seleção única
+      setSelectedItems(new Set([itemPath]));
+      setLastClickedIndex(index);
+    }
+  }, [directoryContent, selectedItems, lastClickedIndex, selectRange]);
 
   const selectAll = useCallback(() => {
-    if (directoryContent) {
-      const allPaths = directoryContent.items.map(item => item.path);
-      setSelectedItems(new Set(allPaths));
-    }
+    if (!directoryContent) return;
+    
+    const allPaths = new Set(directoryContent.items.map(item => item.path));
+    setSelectedItems(allPaths);
   }, [directoryContent]);
 
   const clearSelection = useCallback(() => {
     setSelectedItems(new Set());
+    setLastClickedIndex(null);
   }, []);
 
-  const createDirectory = useCallback(async (name: string) => {
+  const createDirectory = useCallback(async (name: string): Promise<boolean> => {
     try {
       await fileSystemService.createDirectory(currentPath, name);
       refresh();
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao criar diretório');
+      setError(err instanceof Error ? err.message : 'Erro ao criar pasta');
       return false;
     }
   }, [currentPath, refresh]);
 
-  const deleteSelectedItems = useCallback(async () => {
+  const deleteSelectedItems = useCallback(async (): Promise<boolean> => {
     try {
-      const promises = Array.from(selectedItems).map(path => 
-        fileSystemService.deleteItem(path)
-      );
+      const selectedPaths = Array.from(selectedItems);
       
-      await Promise.all(promises);
-      refresh();
+      for (const path of selectedPaths) {
+        await fileSystemService.deleteItem(path);
+      }
+      
       clearSelection();
+      refresh();
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao excluir itens');
       return false;
     }
-  }, [selectedItems, refresh, clearSelection]);
+  }, [selectedItems, clearSelection, refresh]);
 
-  const renameItem = useCallback(async (itemPath: string, newName: string) => {
+  const renameItem = useCallback(async (itemPath: string, newName: string): Promise<boolean> => {
     try {
       await fileSystemService.renameItem(itemPath, newName);
       refresh();

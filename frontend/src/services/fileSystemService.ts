@@ -56,7 +56,7 @@ class FileSystemServiceApi {
     }
   }
 
-  async createDirectory(path: string, name: string): Promise<boolean> {
+  async createDirectory(name: string, path: string): Promise<boolean> {
     try {
       const response = await axios.post<ApiResponse<{ created: boolean }>>(
         `${this.baseURL}/create-directory`,
@@ -158,7 +158,7 @@ class FileSystemServiceApi {
 
   async toggleStar(path: string): Promise<boolean> {
     try {
-      const response = await axios.post<ApiResponse<{ isStarred: boolean }>>(
+      const response = await axios.post<ApiResponse<{ starred: boolean }>>(
         `${this.baseURL}/toggle-star`,
         { path }
       );
@@ -167,7 +167,7 @@ class FileSystemServiceApi {
         throw new Error(response.data.message || "Erro ao favoritar item");
       }
 
-      return response.data.data.isStarred;
+      return response.data.data.starred;
     } catch (error) {
       console.error("Erro ao favoritar item:", error);
       throw new Error("Falha ao favoritar item");
@@ -190,7 +190,6 @@ class FileSystemServiceApi {
       return response.data.data.colorSet === true;
     } catch (error: any) {
       console.error("Erro ao definir cor da pasta:", error);
-      // Preserva a mensagem específica do backend quando houver
       const serverMsg = error?.response?.data?.message;
       throw new Error(serverMsg || "Falha ao definir cor da pasta");
     }
@@ -208,6 +207,21 @@ class FileSystemServiceApi {
     } catch (error) {
       console.error("Erro ao buscar favoritos:", error);
       throw new Error("Falha ao buscar favoritos");
+    }
+  }
+
+  async searchFiles(query: string, rootPath: string): Promise<FileSystemItem[]> {
+    try {
+      const response = await axios.get<ApiResponse<FileSystemItem[]>>(
+        `${this.baseURL}/search?query=${encodeURIComponent(query)}&rootPath=${encodeURIComponent(rootPath)}`
+      );
+      if (!response.data.success) {
+        throw new Error(response.data.message || "Erro ao buscar arquivos");
+      }
+      return response.data.data;
+    } catch (error) {
+      console.error("Erro ao buscar arquivos:", error);
+      throw new Error("Falha ao buscar arquivos");
     }
   }
 

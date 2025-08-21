@@ -21,7 +21,6 @@ interface ContextMenuProps {
   onCut?: (item: FileSystemItem) => void;
   onPaste?: () => void;
   onToggleStar?: (itemPath: string) => void;
-  onSetColor?: (itemPath: string, color: string) => void;
   onPreview?: (item: FileSystemItem) => void;
   onDownload?: (item: FileSystemItem) => void;
   canPaste?: boolean;
@@ -40,16 +39,12 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onCut,
   onPaste,
   onToggleStar,
-  onSetColor,
   onPreview,
   onDownload,
   canPaste = false,
   extraActions = []
 }) => {
   const [adjustedPosition, setAdjustedPosition] = useState(position);
-  const [showColorSubmenu, setShowColorSubmenu] = useState(false);
-  const [submenuOnLeft, setSubmenuOnLeft] = useState(false);
-  const [hoverTimeout, setHoverTimeout] = useState<number | null>(null);
 
   const selectedItem = selectedItems[0];
   const isMultipleSelection = selectedItems.length > 1;
@@ -103,73 +98,12 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     }
   }, [isOpen, position]);
 
-  // Effect para reposicionar o submenu de cores
-  useEffect(() => {
-    if (showColorSubmenu && isOpen) {
-      requestAnimationFrame(() => {
-        const viewportWidth = window.innerWidth;
-        const menuWidth = 280; // Largura máxima do menu principal
-        const submenuWidth = 240; // Largura do submenu
-
-        // Verificar se o submenu precisa abrir para a esquerda
-        if (adjustedPosition.x + menuWidth + submenuWidth > viewportWidth - 20) {
-          setSubmenuOnLeft(true);
-        } else {
-          setSubmenuOnLeft(false);
-        }
-      });
-    }
-  }, [showColorSubmenu, isOpen, adjustedPosition.x]);
-
-  // Cleanup do timeout ao desmontar
-  useEffect(() => {
-    return () => {
-      if (hoverTimeout) {
-        window.clearTimeout(hoverTimeout);
-      }
-    };
-  }, [hoverTimeout]);
-
   if (!isOpen) return null;
 
   const handleAction = (action: () => void) => {
     action();
     onClose();
   };
-
-  // Funções para controlar o submenu com delay
-  const handleSubmenuEnter = () => {
-    if (hoverTimeout) {
-      window.clearTimeout(hoverTimeout);
-      setHoverTimeout(null);
-    }
-    setShowColorSubmenu(true);
-  };
-
-  const handleSubmenuLeave = () => {
-    const timeout = window.setTimeout(() => {
-      setShowColorSubmenu(false);
-    }, 150); // Delay de 150ms para dar tempo de mover o mouse
-    setHoverTimeout(timeout);
-  };
-
-  const handleRemoveColor = () => {
-    if (selectedItem && onSetColor) {
-      // Enviar string vazia ou null para remover a cor
-      handleAction(() => onSetColor(selectedItem.path, ''));
-    }
-  };
-
-  const colors = [
-    { name: 'Vermelho', value: '#ff6b6b', icon: '🔴' },
-    { name: 'Laranja', value: '#ffa502', icon: '🟠' },
-    { name: 'Amarelo', value: '#fffa65', icon: '🟡' },
-    { name: 'Verde', value: '#26de81', icon: '🟢' },
-    { name: 'Azul', value: '#45b7d1', icon: '🔵' },
-    { name: 'Roxo', value: '#a55eea', icon: '🟣' },
-    { name: 'Rosa', value: '#fd79a8', icon: '🩷' },
-    { name: 'Cinza', value: '#778ca3', icon: '⚫' }
-  ];
 
   return (
     <>
@@ -229,18 +163,17 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               onClick={() => handleAction(() => onDownload(selectedItem))}
             >
               <i className="fas fa-download"></i>
-              <span>Download</span>
+              <span>Baixar</span>
               <kbd>Ctrl+S</kbd>
             </button>
           )}
 
           {/* Separador */}
-          {((selectedItem && onPreview) || (selectedItem && onDownload)) && (
-            <div className={styles.separator}></div>
-          )}
+          {((selectedItem && !isMultipleSelection && selectedItem.type === 'file') || isMultipleSelection) && 
+           (onCopy || onCut || onRename) && <div className={styles.separator}></div>}
 
-          {/* Ações de clipboard */}
-          {selectedItem && onCopy && (
+          {/* Copiar */}
+          {selectedItem && !isMultipleSelection && onCopy && (
             <button
               className={styles.menuItem}
               onClick={() => handleAction(() => onCopy(selectedItem))}
@@ -251,7 +184,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             </button>
           )}
 
-          {selectedItem && onCut && (
+          {/* Recortar */}
+          {selectedItem && !isMultipleSelection && onCut && (
             <button
               className={styles.menuItem}
               onClick={() => handleAction(() => onCut(selectedItem))}
@@ -262,6 +196,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             </button>
           )}
 
+          {/* Colar */}
           {canPaste && onPaste && (
             <button
               className={styles.menuItem}
@@ -273,10 +208,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             </button>
           )}
 
-          {/* Separador */}
-          {(onCopy || onCut || onPaste) && <div className={styles.separator}></div>}
-
-          {/* Ações de edição */}
+          {/* Renomear */}
           {selectedItem && !isMultipleSelection && onRename && (
             <button
               className={styles.menuItem}
@@ -288,8 +220,11 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             </button>
           )}
 
-          {/* Favoritar/Desfavoritar */}
-          {selectedItem && onToggleStar && (
+          {/* Separador */}
+          {(onToggleStar || onNewFolder) && <div className={styles.separator}></div>}
+
+          {/* Adicionar/Remover estrela */}
+          {selectedItem && !isMultipleSelection && onToggleStar && (
             <button
               className={styles.menuItem}
               onClick={() => handleAction(() => onToggleStar(selectedItem.path))}
@@ -300,53 +235,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               </span>
               <kbd>Ctrl+D</kbd>
             </button>
-          )}
-
-          {/* Cor da pasta */}
-          {selectedItem && selectedItem.type === 'directory' && onSetColor && (
-            <div
-              className={styles.submenuContainer}
-              onMouseEnter={handleSubmenuEnter}
-              onMouseLeave={handleSubmenuLeave}
-            >
-              <button className={`${styles.menuItem} ${styles.hasSubmenu}`}>
-                <i className="fas fa-palette"></i>
-                <span>Cor da pasta</span>
-                <i className="fas fa-chevron-right"></i>
-              </button>
-
-              {showColorSubmenu && (
-                <div
-                  className={`${styles.submenu} ${submenuOnLeft ? styles.leftSide : ''}`}
-                  onMouseEnter={handleSubmenuEnter}
-                  onMouseLeave={handleSubmenuLeave}
-                >
-                  <div className={styles.submenuHeader}>
-                    <span>Escolher cor</span>
-                  </div>
-                  <div className={styles.colorGrid}>
-                    {colors.map((color) => (
-                      <button
-                        key={color.value}
-                        className={styles.colorOption}
-                        style={{ backgroundColor: color.value }}
-                        onClick={() => handleAction(() => onSetColor!(selectedItem.path, color.value))}
-                        title={color.name}
-                      >
-                        <span className={styles.colorEmoji}>{color.icon}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    className={styles.removeColorBtn}
-                    onClick={handleRemoveColor}
-                  >
-                    <i className="fas fa-ban"></i>
-                    Remover cor
-                  </button>
-                </div>
-              )}
-            </div>
           )}
 
           {/* Nova pasta */}
@@ -369,7 +257,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             <button
               key={index}
               className={`${styles.menuItem} ${action.disabled ? styles.disabled : ''}`}
-              onClick={() => handleAction(action.action)}
+              onClick={() => !action.disabled && handleAction(action.action)}
               disabled={action.disabled}
             >
               <i className={action.icon}></i>
@@ -393,3 +281,5 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     </>
   );
 };
+
+export default ContextMenu;

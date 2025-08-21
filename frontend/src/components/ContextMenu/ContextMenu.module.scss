@@ -19,9 +19,9 @@
   z-index: 10001;
   min-width: 200px;
   max-width: 280px;
-  overflow: visible;
   animation: contextMenuAppear 0.15s ease-out;
   max-height: calc(100vh - 40px);
+  overflow-y: auto;
 }
 
 @keyframes contextMenuAppear {
@@ -95,44 +95,67 @@
     gap: 8px;
     font-size: 14px;
     font-weight: 600;
-    color: var(--primary-color);
+    color: var(--text-primary);
 
     i {
-      font-size: 16px;
+      color: var(--primary-color);
     }
   }
 }
 
 .menuContent {
-  overflow-y: auto;
-  overflow-x: visible;
+  padding: 6px 0;
   max-height: calc(100vh - 120px);
+  overflow-y: auto;
 }
 
 .menuItem {
   width: 100%;
-  padding: 10px 16px;
+  padding: 8px 16px;
   border: none;
   background: transparent;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 13px;
   text-align: left;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: var(--transition-fast);
   display: flex;
   align-items: center;
   gap: 12px;
   position: relative;
-  font-weight: 500;
+
+  i {
+    font-size: 12px;
+    width: 16px;
+    text-align: center;
+    color: var(--text-secondary);
+    transition: var(--transition-fast);
+  }
+
+  span {
+    flex: 1;
+    font-weight: 500;
+  }
+
+  kbd {
+    font-size: 10px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+    font-family: inherit;
+    font-weight: 600;
+    min-width: auto;
+  }
 
   &:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
-    transform: translateX(2px);
-  }
 
-  &:active {
-    transform: translateX(2px) scale(0.98);
+    i {
+      color: var(--primary-color);
+    }
   }
 
   &:focus {
@@ -141,58 +164,27 @@
     box-shadow: inset 2px 0 0 var(--primary-color);
   }
 
-  i {
-    width: 16px;
-    font-size: 14px;
-    color: var(--text-secondary);
-    text-align: center;
-    transition: color 0.2s ease;
-  }
-
-  span {
-    flex: 1;
-    white-space: nowrap;
-  }
-
-  kbd {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-light);
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 10px;
-    color: var(--text-muted);
-    font-family: "Consolas", "Monaco", monospace;
-    font-weight: normal;
-    letter-spacing: 0.5px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  &.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
   }
 
   &.primary {
-    background: linear-gradient(
-      135deg,
-      var(--primary-color),
-      var(--primary-hover)
-    );
-    color: white;
+    color: var(--primary-color);
 
     i {
-      color: white;
-    }
-
-    kbd {
-      background: rgba(255, 255, 255, 0.2);
-      color: rgba(255, 255, 255, 0.8);
-      border-color: rgba(255, 255, 255, 0.3);
+      color: var(--primary-color);
     }
 
     &:hover {
-      background: linear-gradient(
-        135deg,
-        var(--primary-hover),
-        var(--primary-color)
-      );
-      transform: translateX(2px) translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+      background: rgba(0, 123, 255, 0.1);
+      color: var(--primary-color);
+    }
+
+    &:focus {
+      box-shadow: inset 2px 0 0 var(--primary-color),
+                  0 0 0 2px rgba(0, 123, 255, 0.3);
     }
   }
 
@@ -210,14 +202,6 @@
 
     &:focus {
       box-shadow: inset 2px 0 0 #dc3545;
-    }
-  }
-
-  &.hasSubmenu {
-    .fa-chevron-right {
-      margin-left: auto;
-      font-size: 10px;
-      transition: transform 0.2s ease;
     }
   }
 }
@@ -246,114 +230,6 @@
   }
 }
 
-.submenuContainer {
-  position: relative;
-  overflow: visible;
-}
-
-.submenu {
-  position: absolute;
-  left: calc(100% + 8px);
-  top: 0;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--border-radius);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  z-index: 10003;
-  min-width: 240px;
-  animation: submenuSlideIn 0.15s ease-out;
-  opacity: 1;
-  visibility: visible;
-
-  &.leftSide {
-    left: auto;
-    right: calc(100% + 8px);
-    animation: submenuSlideInLeft 0.15s ease-out;
-  }
-}
-
-.submenuHeader {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border-light);
-  background: var(--bg-secondary);
-
-  span {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-}
-
-.colorGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  padding: 16px;
-}
-
-.colorOption {
-  width: 36px;
-  height: 36px;
-  border-radius: 18px;
-  border: 2px solid white;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
-  &:hover {
-    transform: scale(1.1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    border-color: var(--bg-primary);
-  }
-
-  &:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--primary-color);
-  }
-
-  .colorEmoji {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 16px;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-
-  &:hover .colorEmoji {
-    opacity: 1;
-  }
-}
-
-.removeColorBtn {
-  width: 100%;
-  padding: 8px 12px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-  transition: var(--transition-fast);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-top: 1px solid var(--border-light);
-
-  &:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-  }
-
-  i {
-    font-size: 10px;
-  }
-}
-
 // Animações
 @keyframes starGlow {
   0%, 100% {
@@ -366,33 +242,12 @@
   }
 }
 
-@keyframes submenuSlideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes submenuSlideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
 // Responsividade
 @media (max-width: 768px) {
   .contextMenu {
     min-width: 200px;
     border-radius: 16px;
+    max-width: calc(100vw - 40px);
   }
 
   .menuItem {
@@ -407,16 +262,5 @@
     kbd {
       display: none;
     }
-  }
-
-  .colorGrid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    padding: 16px;
-  }
-
-  .colorOption {
-    width: 36px;
-    height: 36px;
   }
 }

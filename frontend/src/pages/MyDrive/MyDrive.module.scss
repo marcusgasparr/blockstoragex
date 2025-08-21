@@ -1,330 +1,383 @@
 @use "../../styles/variables.scss" as *;
 
 .myDrive {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-// Header principal
-.header {
+// Loading e Error states
+.loadingContainer,
+.errorContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loadingSpinner,
+.errorMessage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+  color: var(--text-secondary);
+
+  i {
+    font-size: 20px;
+    color: var(--primary-color);
+  }
+}
+
+.retryBtn {
+  padding: 10px 20px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: var(--transition-fast);
+
+  &:hover {
+    background: var(--primary-hover);
+  }
+}
+
+// Toolbar
+.toolbar {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
+  align-items: center;
+  padding: 16px 20px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
   gap: 20px;
-  flex-wrap: wrap;
 
-  .titleSection {
-    flex: 1;
-    min-width: 0;
-
-    .title {
-      font-size: 32px;
-      font-weight: 400;
-      color: var(--text-primary);
-      margin: 0 0 8px 0;
-    }
-  }
-
-  .controls {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .filterSection {
+  .pathInfo {
     display: flex;
     align-items: center;
     gap: 12px;
+    flex: 1;
+    min-width: 0;
 
-    .searchLocal {
-      .searchInput {
-        width: 200px;
-        padding: 6px 10px;
-        border: 1px solid var(--border-light);
-        border-radius: var(--border-radius);
-        font-size: 13px;
-        background: var(--bg-primary);
-        color: var(--text-primary);
-
-        &:focus {
-          outline: none;
-          border-color: var(--primary-color);
-          box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-        }
-
-        &::placeholder {
-          color: var(--text-muted);
-        }
-      }
-    }
-
-    .typeFilter {
-      position: relative;
-
-      .filterBtn {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 10px;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-light);
-        border-radius: var(--border-radius);
-        color: var(--text-primary);
-        font-size: 13px;
-        cursor: pointer;
-        min-width: 80px;
-
-        &:hover {
-          background: var(--bg-hover);
-        }
-
-        i.fa-chevron-down {
-          margin-left: auto;
-          font-size: 10px;
-        }
-      }
-
-      .typeDropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        background: var(--bg-primary);
-        border: 1px solid var(--border-light);
-        border-radius: var(--border-radius);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        z-index: 1000;
-        min-width: 150px;
-        padding: 8px 0;
-        margin-top: 4px;
-
-        button {
-          width: 100%;
-          padding: 8px 16px;
-          background: none;
-          border: none;
-          text-align: left;
-          cursor: pointer;
-          color: var(--text-primary);
-          font-size: 13px;
-          transition: var(--transition-fast);
-
-          &:hover {
-            background: var(--bg-hover);
-          }
-        }
-      }
-    }
-  }
-
-  .viewControls {
-    display: flex;
-    gap: 4px;
-
-    .viewBtn {
+    .backBtn {
       width: 36px;
       height: 36px;
       border: 1px solid var(--border-light);
       background: var(--bg-secondary);
       border-radius: var(--border-radius);
-      color: var(--text-muted);
-      font-size: 14px;
+      color: var(--text-primary);
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       transition: var(--transition-fast);
 
-      &:hover {
-        background-color: var(--bg-hover);
-        color: var(--text-primary);
+      &:hover:not(:disabled) {
+        background: var(--bg-hover);
+        border-color: var(--border-hover);
       }
 
-      &.active {
-        background-color: var(--primary-color);
-        color: white;
-        border-color: var(--primary-color);
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      i {
+        font-size: 14px;
+      }
+    }
+
+    .breadcrumb {
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-family: 'Consolas', 'Monaco', monospace;
+      background: var(--bg-secondary);
+      padding: 8px 12px;
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-light);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .searchInfo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      font-size: 14px;
+
+      i {
+        color: var(--primary-color);
       }
     }
   }
-}
 
-// Breadcrumb/Navegação
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 8px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  overflow-x: auto;
-  white-space: nowrap;
-
-  .breadcrumbItem {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    cursor: pointer;
-    padding: 2px 6px;
-    border-radius: 3px;
-    transition: var(--transition-fast);
-    font-size: 12px;
-
-    &:hover {
-      background: var(--bg-hover);
-      color: var(--text-primary);
-    }
-  }
-
-  .breadcrumbSeparator {
-    font-size: 10px;
-    color: var(--text-muted);
-    margin: 0 2px;
-  }
-}
-
-// Navegação (botões voltar, atualizar, etc)
-.navigation {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border-light);
-
-  .navBtn {
+  .actions {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-light);
-    border-radius: var(--border-radius);
-    color: var(--text-primary);
-    font-size: 13px;
-    cursor: pointer;
-    transition: var(--transition-fast);
-
-    &:hover:not(:disabled) {
-      background: var(--bg-hover);
-      border-color: var(--border-hover);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    i {
-      font-size: 12px;
-    }
+    gap: 12px;
+    flex-wrap: wrap;
   }
 }
 
-// Barra de seleção
-.selectionBar {
+// Filtros e ordenação
+.filterContainer,
+.sortContainer {
+  position: relative;
+}
+
+.filterBtn,
+.sortBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
   border-radius: var(--border-radius);
-  padding: 12px 16px;
-  margin-bottom: 16px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  white-space: nowrap;
 
-  .selectionInfo {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    span {
-      font-size: 14px;
-      color: var(--text-primary);
-    }
-
-    .actionBtn {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      background: var(--bg-hover);
-      border: 1px solid var(--border-light);
-      border-radius: var(--border-radius);
-      color: var(--text-secondary);
-      font-size: 12px;
-      cursor: pointer;
-      transition: var(--transition-fast);
-
-      &:hover {
-        background: var(--bg-primary);
-        color: var(--text-primary);
-      }
-    }
-  }
-}
-
-// Conteúdo principal
-.content {
-  min-height: 400px;
-}
-
-// Estados de carregamento e erro
-.loadingState,
-.errorState,
-.emptyState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  color: var(--text-secondary);
-  text-align: center;
-
-  i {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.6;
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
   }
 
-  p {
-    margin: 0 0 16px 0;
-    font-size: 16px;
-  }
-
-  .retryBtn,
-  .backBtn {
-    padding: 8px 16px;
+  &.active {
     background: var(--primary-color);
     color: white;
-    border: none;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    transition: var(--transition-fast);
-    font-size: 14px;
+    border-color: var(--primary-color);
+  }
 
-    &:hover {
-      background: var(--primary-hover);
+  i {
+    font-size: 12px;
+
+    &.fa-chevron-down,
+    &.fa-chevron-up {
+      margin-left: 4px;
     }
   }
 }
 
-// Grid de itens
-.itemsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
+.sortContainer {
+  display: flex;
+  gap: 4px;
 }
 
-// Lista de itens
-.itemsList {
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  min-width: 180px;
+  padding: 6px 0;
+  margin-top: 4px;
+
+  button {
+    width: 100%;
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 13px;
+    transition: var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    &:hover {
+      background: var(--bg-hover);
+    }
+
+    i {
+      width: 16px;
+      color: var(--text-secondary);
+    }
+  }
+}
+
+// Modo de visualização
+.viewModeContainer {
   display: flex;
-  flex-direction: column;
   gap: 2px;
 }
 
-// Card de item (modo grid)
-.itemCard {
+.viewModeBtn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  color: var(--text-muted);
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  justify-content: center;
+  transition: var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-hover);
+  }
+
+  &.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+  }
+
+  i {
+    font-size: 14px;
+  }
+}
+
+// Botão de modo de seleção
+.selectModeBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+  }
+
+  &.active {
+    background: var(--warning-color);
+    color: white;
+    border-color: var(--warning-color);
+  }
+
+  i {
+    font-size: 14px;
+  }
+}
+
+// Info de seleção
+.selectionInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--primary-color);
+  color: white;
+  border-radius: var(--border-radius);
+  font-size: 13px;
+
+  .selectAllBtn,
+  .clearSelectionBtn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: var(--transition-fast);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  .clearSelectionBtn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+}
+
+// Lista de arquivos
+.filesList {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+
+  &.grid .itemsContainer {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  &.list .itemsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+// Header da lista
+.listHeader {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 16px;
+  padding: 12px 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--border-radius);
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+
+  .headerName,
+  .headerSize,
+  .headerDate,
+  .headerActions {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .headerSize {
+    width: 80px;
+    text-align: right;
+  }
+
+  .headerDate {
+    width: 120px;
+  }
+
+  .headerActions {
+    width: 40px;
+  }
+}
+
+// Items de arquivo
+.fileItem {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
   border-radius: var(--border-radius);
@@ -335,6 +388,8 @@
   &:hover {
     background: var(--bg-hover);
     border-color: var(--border-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
 
   &.selected {
@@ -346,216 +401,146 @@
       color: white !important;
     }
 
-    .itemName {
+    .itemName,
+    .itemPath,
+    .itemSize,
+    .itemDate {
+      color: white !important;
+    }
+
+    .itemMoreBtn {
       color: white;
     }
   }
 
-  &.globalSearchItem {
-    border-left: 3px solid var(--primary-color);
+  &.renaming {
+    background: var(--bg-hover);
+    border-color: var(--primary-color);
   }
 
-  .itemIcon {
-    font-size: 18px;
-    position: relative;
-    width: 24px;
-    text-align: center;
+  // Layout em lista
+  .list & {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    gap: 16px;
+    padding: 12px 20px;
 
-    .folderIcon,
-    .fileIcon {
-      color: var(--primary-color);
+    .itemInfo {
+      display: contents;
     }
 
-    .starIcon {
-      position: absolute;
-      top: -6px;
-      right: -6px;
-      font-size: 10px;
-      color: #ffc107;
-      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-    }
-  }
-
-  .itemInfo {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-
-    .itemName {
-      font-size: 14px;
-      color: var(--text-primary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-weight: 500;
+    .itemSize {
+      width: 80px;
+      text-align: right;
     }
 
-    .itemPath {
-      font-size: 11px;
-      color: var(--text-muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .itemSize,
     .itemDate {
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-  }
-
-  .itemMoreBtn {
-    width: 24px;
-    height: 24px;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    border-radius: var(--border-radius-sm);
-    opacity: 0;
-    transition: var(--transition-fast);
-    flex-shrink: 0;
-
-    &:hover {
-      background: rgba(0, 0, 0, 0.1);
-      color: var(--text-primary);
-    }
-  }
-
-  &:hover .itemMoreBtn {
-    opacity: 1;
-  }
-
-  &.selected .itemMoreBtn {
-    color: white;
-    opacity: 1;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.2);
+      width: 120px;
     }
   }
 }
 
-// Row de item (modo lista)
-.itemRow {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto auto;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
-  background: var(--bg-secondary);
-  border: 1px solid transparent;
-  border-radius: var(--border-radius);
+.itemIcon {
+  position: relative;
+  width: 32px;
+  text-align: center;
+
+  i {
+    font-size: 20px;
+    color: var(--primary-color);
+
+    &.folderIcon {
+      color: var(--warning-color);
+    }
+  }
+
+  .starIcon {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    font-size: 10px;
+    color: #ffc107;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  }
+}
+
+.itemInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .itemName {
+    font-size: 15px;
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .itemPath {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: 'Consolas', 'Monaco', monospace;
+  }
+
+  .itemSize,
+  .itemDate {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .itemSize {
+    white-space: nowrap;
+  }
+}
+
+.itemMoreBtn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
+  border-radius: var(--border-radius);
+  opacity: 0;
   transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 
   &:hover {
-    background: var(--bg-hover);
-    border-color: var(--border-light);
+    background: rgba(0, 0, 0, 0.1);
+    color: var(--text-primary);
   }
 
-  &.selected {
-    background: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
-
-    .itemIcon i {
-      color: white !important;
-    }
+  i {
+    font-size: 14px;
   }
+}
 
-  &.globalSearchItem {
-    border-left: 3px solid var(--primary-color);
-  }
+.fileItem:hover .itemMoreBtn,
+.fileItem.selected .itemMoreBtn {
+  opacity: 1;
+}
 
-  .itemIcon {
-    font-size: 16px;
-    position: relative;
-    width: 20px;
-    text-align: center;
-
-    .folderIcon,
-    .fileIcon {
-      color: var(--primary-color);
-    }
-
-    .starIcon {
-      position: absolute;
-      top: -6px;
-      right: -6px;
-      font-size: 8px;
-      color: #ffc107;
-      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-    }
-  }
-
-  .itemInfo {
-    display: contents;
-
-    .itemName {
-      font-size: 14px;
-      color: var(--text-primary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-weight: 500;
-    }
-
-    .itemSize {
-      font-size: 12px;
-      color: var(--text-secondary);
-      text-align: right;
-      min-width: 80px;
-    }
-
-    .itemDate {
-      font-size: 12px;
-      color: var(--text-secondary);
-      min-width: 100px;
-    }
-  }
-
-  .itemMoreBtn {
-    width: 24px;
-    height: 24px;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    border-radius: var(--border-radius-sm);
-    opacity: 0;
-    transition: var(--transition-fast);
-
-    &:hover {
-      background: rgba(0, 0, 0, 0.1);
-      color: var(--text-primary);
-    }
-  }
-
-  &:hover .itemMoreBtn {
-    opacity: 1;
-  }
-
-  &.selected .itemMoreBtn {
-    color: white;
-    opacity: 1;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-  }
+.fileItem.selected .itemMoreBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 // Input de renomeação
 .renameInput {
   width: 100%;
-  padding: 4px 8px;
+  padding: 6px 10px;
   border: 2px solid var(--primary-color);
-  border-radius: var(--border-radius-sm);
-  font-size: 14px;
+  border-radius: var(--border-radius);
+  font-size: 15px;
   color: var(--text-primary);
   background: var(--bg-primary);
   font-weight: 500;
@@ -563,6 +548,46 @@
   &:focus {
     outline: none;
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  }
+}
+
+// Estados vazios
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: var(--text-secondary);
+  text-align: center;
+
+  i {
+    font-size: 48px;
+    margin-bottom: 20px;
+    opacity: 0.6;
+    color: var(--text-muted);
+  }
+
+  p {
+    margin: 0 0 20px 0;
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .backBtn {
+    padding: 10px 20px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: var(--transition-fast);
+
+    &:hover {
+      background: var(--primary-hover);
+    }
   }
 }
 
@@ -578,71 +603,113 @@
 }
 
 // Responsividade
-@media (max-width: 768px) {
-  .myDrive {
-    padding: 0 12px;
-  }
-
-  .header {
-    flex-direction: column;
-    align-items: stretch;
+@media (max-width: 1024px) {
+  .toolbar {
+    padding: 12px 16px;
+    flex-wrap: wrap;
     gap: 12px;
 
-    .titleSection .title {
-      font-size: 24px;
+    .actions {
+      gap: 8px;
     }
+  }
 
-    .controls {
-      justify-content: space-between;
+  .filesList {
+    padding: 16px;
+
+    &.grid .itemsContainer {
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
     }
+  }
+}
 
-    .filterSection {
-      order: 1;
-      width: 100%;
-
-      .searchLocal .searchInput {
-        width: 100%;
+@media (max-width: 768px) {
+  .toolbar {
+    .pathInfo {
+      .breadcrumb {
+        font-size: 12px;
       }
     }
 
-    .viewControls {
-      order: 2;
+    .actions {
+      flex-wrap: wrap;
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .sortContainer {
+      order: 1;
+      width: 100%;
+      margin-top: 8px;
     }
   }
 
-  .itemsGrid {
-    grid-template-columns: 1fr;
+  .filesList {
+    padding: 12px;
+
+    &.grid .itemsContainer {
+      grid-template-columns: 1fr;
+    }
   }
 
-  .navigation {
-    flex-wrap: wrap;
-    gap: 6px;
+  .listHeader {
+    display: none;
+  }
 
-    .navBtn {
-      font-size: 12px;
-      padding: 6px 10px;
+  .fileItem {
+    padding: 12px 16px;
+
+    .list & {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+
+      .itemInfo {
+        flex-direction: column;
+        gap: 4px;
+
+        .itemSize,
+        .itemDate {
+          font-size: 12px;
+        }
+      }
     }
   }
 }
 
 @media (max-width: 480px) {
-  .header {
-    .controls {
-      flex-direction: column;
-      gap: 8px;
-    }
+  .toolbar {
+    padding: 8px 12px;
 
-    .filterSection {
-      flex-direction: column;
-      gap: 8px;
+    .pathInfo {
+      .backBtn {
+        width: 32px;
+        height: 32px;
+      }
+
+      .breadcrumb {
+        font-size: 11px;
+        padding: 6px 8px;
+      }
     }
   }
 
-  .itemCard {
+  .filesList {
+    padding: 8px;
+  }
+
+  .fileItem {
     padding: 10px 12px;
-  }
+    gap: 12px;
 
-  .breadcrumb {
-    font-size: 11px;
+    .itemIcon {
+      width: 24px;
+
+      i {
+        font-size: 18px;
+      }
+    }
   }
 }
