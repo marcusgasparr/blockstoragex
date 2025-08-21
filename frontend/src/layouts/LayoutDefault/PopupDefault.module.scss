@@ -1,72 +1,135 @@
+@use "../../styles/variables.scss" as *;
+
 .overlay {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.45);
-  z-index: 2000;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+  animation: overlayFadeIn 0.2s ease-out;
 }
 
 .popup {
   background: var(--bg-primary);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-  min-width: 340px;
-  max-width: 90vw;
-  max-height: 80vh;
-  padding: 0;
+  border-radius: 12px;
+  width: 95vw;
+  max-width: 1400px;
+  height: 90vh;
   display: flex;
   flex-direction: column;
-  animation: popupAppear 0.18s ease;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  animation: popupSlideIn 0.3s ease-out;
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.2rem 1.5rem 0.5rem 1.5rem;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--border-color);
-}
+  background: var(--bg-secondary);
+  flex-shrink: 0;
 
-.title {
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
+  .title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 12px;
 
-.closeBtn {
-  background: none;
-  border: none;
-  font-size: 1.3rem;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: color 0.18s;
-  padding: 0.2rem 0.5rem;
-  border-radius: 6px;
-  &:hover {
-    color: #ff6a6a;
-    background: rgba(255,106,106,0.08);
+    &::before {
+      content: "";
+      width: 20px;
+      height: 20px;
+      background: var(--primary-color);
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+  }
+
+  .closeBtn {
+    background: var(--bg-hover);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      background: var(--bg-active);
+      color: var(--text-primary);
+      transform: scale(1.05);
+    }
+
+    i {
+      font-size: 16px;
+    }
   }
 }
 
 .content {
-  padding: 1.2rem 1.5rem;
-  overflow-y: auto;
-  max-height: 60vh;
-  color: var(--text-primary);
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
 }
 
-@keyframes popupAppear {
+// Animações
+@keyframes overlayFadeIn {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(20px);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes popupSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
   }
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
+  }
+}
+
+// Responsividade
+@media (max-width: 768px) {
+  .popup {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    max-width: none;
+  }
+
+  .header {
+    padding: 16px 20px;
+
+    .title {
+      font-size: 16px;
+    }
+
+    .closeBtn {
+      width: 32px;
+      height: 32px;
+    }
   }
 }

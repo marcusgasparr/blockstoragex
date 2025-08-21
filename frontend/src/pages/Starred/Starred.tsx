@@ -4,6 +4,7 @@ import { useFileSystem } from "../../hooks/useFileSystem";
 import { useNavigate } from 'react-router-dom';
 
 const Starred: React.FC = () => {
+  const navigate = useNavigate();
   const [starredFiles, setStarredFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,25 +37,18 @@ const Starred: React.FC = () => {
   }, [refreshTrigger]);
 
   // Handler para favoritar/desfavoritar e atualizar favoritos
-  const handleToggleStar = async () => {
-    const items = getSelectedItemsData();
-    if (items.length !== 1) {
-      console.warn('Selecione apenas um item para favoritar');
-      return;
-    }
-
+  const handleToggleStar = async (itemPath: string) => {
     try {
-      const isStarred = await toggleStar(items[0].path);
-      console.log('Status de favorito atualizado para:', items[0].name);
-      refresh();
+      const isStarred = await toggleStar(itemPath);
+      console.log('Status de favorito atualizado');
+      setRefreshTrigger(t => t + 1);
 
-      // Se foi favoritado, navegar para a página de favoritos
-      if (isStarred) {
-        navigate('/favoritos');
+      // Se foi desfavoritado, navegar para a página principal
+      if (!isStarred) {
+        navigate('/');
       }
     } catch (error) {
       console.error('Erro ao atualizar favorito:', error);
-      alert('Erro ao atualizar favorito.');
     }
   };
 

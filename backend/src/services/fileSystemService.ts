@@ -34,10 +34,14 @@ export class FileSystemService {
           type: stat.isDirectory() ? "directory" : "file",
           size: stat.size,
           modified: stat.mtime,
-          extension: stat.isFile() ? path.extname(filePath).toLowerCase() : undefined,
+          extension: stat.isFile()
+            ? path.extname(filePath).toLowerCase()
+            : undefined,
           icon: this.getFileIcon(path.basename(filePath), stat.isDirectory()),
           isStarred: true,
-          folderColor: stat.isDirectory() ? this.folderColors.get(filePath) : undefined,
+          folderColor: stat.isDirectory()
+            ? this.folderColors.get(filePath)
+            : undefined,
         });
       } catch (err) {
         // Se o arquivo não existe mais, ignora
@@ -422,6 +426,72 @@ export class FileSystemService {
     } catch (error) {
       console.error("Erro ao definir cor da pasta:", error);
       throw new Error("Erro ao definir cor da pasta");
+    }
+  }
+
+  // Adicione estes métodos na classe FileSystemService
+  static async readFile(filePath: string): Promise<string> {
+    try {
+      if (!this.isPathAllowed(path.dirname(filePath))) {
+        throw new Error("Acesso negado");
+      }
+
+      // Verificar se o arquivo existe
+      if (!fs.existsSync(filePath)) {
+        throw new Error("Arquivo não encontrado");
+      }
+
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) {
+        throw new Error("Caminho especificado é um diretório, não um arquivo");
+      }
+
+      // Verificar tamanho do arquivo (limite de 10MB)
+      if (stat.size > 10 * 1024 * 1024) {
+        throw new Error("Arquivo muito grande para visualização (máximo 10MB)");
+      }
+
+      const content = fs.readFileSync(filePath, "utf8");
+      return content;
+    } catch (error) {
+      console.error("Erro ao ler arquivo:", error);
+      throw new Error(
+        error instanceof Error ? error.message : "Erro ao ler arquivo"
+      );
+    }
+  }
+
+  static async downloadFile(filePath: string, res: any): Promise<void> {
+    try {
+      if (!this.isPathAllowed(path.dirname(filePath))) {
+        throw new Error("Acesso negado");
+      }
+
+      // Verificar se o arquivo existe
+      if (!fs.existsSync(filePath)) {
+        throw new Error("Arquivo não encontrado");
+      }
+
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) {
+        throw new Error("Caminho especificado é um diretório, não um arquivo");
+      }
+
+      const fileName = path.basename(filePath);
+
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${fileName}"`
+      );
+      res.setHeader("Content-Type", "application/octet-stream");
+
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error("Erro ao fazer download:", error);
+      throw new Error(
+        error instanceof Error ? error.message : "Erro ao fazer download"
+      );
     }
   }
 }

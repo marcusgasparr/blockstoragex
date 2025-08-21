@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styles from './MyDrive.module.scss';
 import { useFileSystem } from '../../hooks/useFileSystem';
 import { ContextMenu } from '../../components/ContextMenu/ContextMenu';
+import { PasteBar } from '../../layouts/LayoutDefault/components/PasteBar/PasteBar';
 import FilePreview from '../../components/FilePreview/FilePreview';
 import PopupDefault from '../../layouts/LayoutDefault/PopupDefault';
 import { FileSystemItem } from '../../services/fileSystemService';
@@ -111,6 +112,7 @@ const MyDrive: React.FC = () => {
 
     copyItems(items);
     setShowPasteBar(true);
+    console.log('PasteBar should show:', true);
     console.log('Copiado:', items.map(i => i.name));
   };
 
@@ -230,8 +232,17 @@ const MyDrive: React.FC = () => {
   };
 
   const handleSelectMode = () => {
-    setSelectMode(!selectMode);
-    console.log('Modo seleção:', !selectMode ? 'ativado' : 'desativado');
+    const items = getSelectedItemsData();
+
+    // Se não há item selecionado no menu, não faz nada
+    if (items.length === 0) {
+      console.warn('Nenhum item para selecionar');
+      return;
+    }
+
+    // Ativa modo seleção e mantém o item atual selecionado
+    setSelectMode(true);
+    console.log('Modo seleção ativado com:', items[0].name);
   };
 
   const confirmRename = async () => {
@@ -335,12 +346,15 @@ const MyDrive: React.FC = () => {
           <h2 className={styles.sectionTitle}>
             {directoryContent ? `${directoryContent.totalItems} itens` : 'Carregando...'}
           </h2>
-          {selectedItems.size > 0 && (
+          {(selectedItems.size > 0 || selectMode) && (
             <div className={styles.selectionActions}>
               <span className={styles.selectionCount}>
-                {selectedItems.size} item(s) selecionado(s)
+                {selectMode ? 'Modo seleção ativo' : `${selectedItems.size} item(s) selecionado(s)`}
               </span>
-              <button className={styles.actionBtn} onClick={clearSelection}>
+              <button className={styles.actionBtn} onClick={() => {
+                clearSelection();
+                setSelectMode(false);
+              }}>
                 <i className="fas fa-times"></i> Limpar
               </button>
             </div>
@@ -366,16 +380,29 @@ const MyDrive: React.FC = () => {
                 className={`${viewMode === 'grid' ? styles.itemCard : styles.itemRow
                   } ${selectedItems.has(item.path) ? styles.selected : ''}`}
                 onClick={(e) => {
-                  if (selectMode) {
-                    // No modo seleção, apenas seleciona/deseleciona
+                  // Ctrl+Click sempre seleciona (independente do modo)
+                  if (e.ctrlKey) {
                     selectItem(item.path, index, e);
-                  } else {
-                    // Comportamento normal
-                    if (item.type === 'directory') {
-                      navigateToDirectory(item.path);
-                    } else {
-                      setPreviewFile(item);
-                    }
+                    return;
+                  }
+
+                  // Se está no modo seleção, apenas seleciona
+                  if (selectMode) {
+                    selectItem(item.path, index, e);
+                    return;
+                  }
+
+                  // Clique normal: apenas navega para pastas
+                  if (item.type === 'directory') {
+                    navigateToDirectory(item.path);
+                  }
+                  // Arquivos não fazem nada no clique único
+                }}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  // Duplo clique: abre arquivos para visualização
+                  if (item.type === 'file') {
+                    setPreviewFile(item);
                   }
                 }}
                 onContextMenu={(e) => handleContextMenu(e, item.path)}
@@ -475,6 +502,14 @@ const MyDrive: React.FC = () => {
         className={styles.contextOverlay}
         onContextMenu={handleContextMenu}
         style={{ display: contextMenu.isOpen ? 'none' : 'block' }}
+      />
+      {/* Barra de colar persistente */}
+      <PasteBar
+        isVisible={showPasteBar}
+        operation={clipboard.operation}
+        items={clipboard.items}
+        onPaste={handlePaste}
+        onCancel={handleCancelPaste}
       />
     </div>
   );
