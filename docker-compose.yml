@@ -1,1 +1,53 @@
-# Orquestração dos serviços BlockStorageX
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: blockstoragex_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: blockstoragex
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 123456
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - file_manager_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  app:
+    build: .
+    container_name: blockstoragex_app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - ./storage:/app/storage
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=123456
+      - DB_NAME=blockstoragex
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: npm run dev
+    networks:
+      - file_manager_network
+
+volumes:
+  mysql_data:
+
+networks:
+  file_manager_network:
+    driver: bridge

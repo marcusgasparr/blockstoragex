@@ -1,1 +1,0 @@
--- Estrutura inicial do banco de dados
