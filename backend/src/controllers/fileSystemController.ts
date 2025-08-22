@@ -102,31 +102,55 @@ export class FileSystemController {
   }
 
   static async deleteItem(req: Request, res: Response): Promise<void> {
+    const { path: itemPath, userId } = req.body;
+
+    if (!itemPath) {
+      res.status(400).json({
+        success: false,
+        message: "Caminho do item é obrigatório",
+      });
+      return;
+    }
+
+    let deleted = false;
+    let errorMsg = null;
     try {
-      const { path: itemPath } = req.body;
+      deleted = await FileSystemService.deleteItem(itemPath);
+    } catch (error) {
+      errorMsg = error instanceof Error ? error.message : String(error);
+    }
 
-      if (!itemPath) {
-        res.status(400).json({
-          success: false,
-          message: "Caminho do item é obrigatório",
-        });
-        return;
-      }
+    // Registrar log de exclusão (sempre)
+    try {
+      const { Log } = await import('../lib/models/Log');
+      await Log.logAction({
+        userId: userId || req.headers['x-user-id'] || null,
+        actionType: 'DELETE',
+        filePath: itemPath,
+        fileName: itemPath.split(/[\\/]/).pop() || null,
+        ipAddress: req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || null,
+        userAgent: req.headers['user-agent'] || null,
+        details: {
+          deletedAt: new Date().toISOString(),
+          status: deleted ? 'success' : 'fail',
+          error: errorMsg
+        }
+      });
+    } catch (logError) {
+      console.error('Erro ao registrar log de exclusão:', logError);
+    }
 
-      const result = await FileSystemService.deleteItem(itemPath);
-
+    if (deleted) {
       res.status(200).json({
         success: true,
-        data: { deleted: result },
+        data: { deleted: true },
         message: "Item excluído com sucesso",
         timestamp: new Date().toISOString(),
       });
-    } catch (error) {
-      console.error("Erro ao excluir item:", error);
-
-      res.status(500).json({
+    } else {
+      res.status(404).json({
         success: false,
-        message: error instanceof Error ? error.message : "Erro ao excluir item",
+        message: errorMsg || "Item não encontrado",
         timestamp: new Date().toISOString(),
       });
     }

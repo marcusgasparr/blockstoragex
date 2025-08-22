@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import styles from './Sidebar.module.scss';
 import { useSpecificDisk } from '../../hooks/useSpecificDisk';
 import PopupInputNewFolder from '../PopupInputNewFolder/PopupInputNewFolder';
+import PopupCreateShortcut from '../PopupCreateShortcut/PopupCreateShortcut';
+import { useSidebarShortcuts } from '../../hooks/useSidebarShortcuts';
 
 interface SidebarProps {
   currentDrive?: string;
@@ -19,8 +21,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentDrive }) => {
   // Estado para o dropdown e popup
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNewFolderPopup, setShowNewFolderPopup] = useState(false);
+  const [showCreateShortcutPopup, setShowCreateShortcutPopup] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+
+  // Hook para gerenciar atalhos
+  const { shortcuts, createShortcut, deleteShortcut } = useSidebarShortcuts();
 
   // Calcular porcentagem de uso
   const usagePercentage = diskInfo ? diskInfo.capacity : 0;
@@ -31,6 +37,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentDrive }) => {
     { icon: 'fas fa-folder', label: 'Meu Drive', path: '/' },
     { icon: 'fas fa-clock', label: 'Recentes', path: '/recentes' },
     { icon: 'fas fa-star', label: 'Com estrela', path: '/favoritos' },
+    { icon: 'fas fa-list-alt', label: 'Logs', path: '/logs' },
     // { icon: 'fas fa-trash', label: 'Lixeira', path: '/lixeira' },
   ];
 
@@ -48,6 +55,35 @@ const Sidebar: React.FC<SidebarProps> = ({ currentDrive }) => {
   const handleNewFolder = () => {
     setShowDropdown(false);
     setShowNewFolderPopup(true);
+  };
+
+  const handleCreateShortcut = () => {
+    setShowDropdown(false);
+    setShowCreateShortcutPopup(true);
+  };
+
+  const handleShortcutCreate = async (name: string, url: string) => {
+    const success = await createShortcut({
+      shortcut_name: name,
+      shortcut_path: url
+    });
+
+    if (success) {
+      console.log('Atalho criado com sucesso!');
+    }
+  };
+
+  const handleShortcutClick = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleShortcutDelete = async (shortcutId: number) => {
+    if (window.confirm('Tem certeza que deseja excluir este atalho?')) {
+      const success = await deleteShortcut(shortcutId);
+      if (success) {
+        console.log('Atalho excluído com sucesso!');
+      }
+    }
   };
 
   const handleCreateFolder = async (name: string) => {
@@ -111,16 +147,18 @@ const Sidebar: React.FC<SidebarProps> = ({ currentDrive }) => {
 
         if (!data.success) {
           alert(`Erro ao fazer upload de ${file.name}: ${data.message}`);
+          break;
         }
       } catch (error) {
         console.error('Erro no upload:', error);
         alert(`Erro ao fazer upload de ${file.name}`);
+        break;
       }
     }
 
     // Recarregar a página atual se estiver no MyDrive
     if (location.pathname === '/') {
-      setTimeout(() => window.location.reload(), 500);
+      setTimeout(() => window.location.reload(), 1000);
     }
 
     // Limpar o input
@@ -211,6 +249,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentDrive }) => {
               <i className="fas fa-folder-upload"></i>
               <span>Upload de pasta</span>
             </button>
+            <div className={styles.separator}></div>
+            <button onClick={handleCreateShortcut} className={styles.dropdownItem}>
+              <i className="fas fa-external-link-alt"></i>
+              <span>Criar Atalho</span>
+            </button>
           </div>
         )}
 
@@ -244,6 +287,38 @@ const Sidebar: React.FC<SidebarProps> = ({ currentDrive }) => {
         ))}
       </nav>
 
+      {/* Seção de atalhos personalizados */}
+      {shortcuts.length > 0 && (
+        <div className={styles.shortcuts}>
+          <div className={styles.shortcutsHeader}>
+            <span className={styles.shortcutsTitle}>Atalhos</span>
+          </div>
+          <div className={styles.shortcutsList}>
+            {shortcuts.map((shortcut) => (
+              <div
+                key={shortcut.id}
+                className={styles.shortcutItem}
+                onClick={() => handleShortcutClick(shortcut.shortcut_path)}
+                title={shortcut.shortcut_path}
+              >
+                <i className={`${styles.shortcutIcon} ${shortcut.icon || 'fas fa-external-link-alt'}`}></i>
+                <span className={styles.shortcutLabel}>{shortcut.shortcut_name}</span>
+                <button
+                  className={styles.shortcutDeleteBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (shortcut.id) handleShortcutDelete(shortcut.id);
+                  }}
+                  title="Excluir atalho"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className={styles.storage}>
         <div className={styles.storageInfo}>
           <p className={styles.storageText}>
@@ -273,6 +348,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentDrive }) => {
         confirmText="Criar"
         onClose={() => setShowNewFolderPopup(false)}
         onConfirm={handleCreateFolder}
+      />
+
+      {/* Popup para criar atalho */}
+      <PopupCreateShortcut
+        isOpen={showCreateShortcutPopup}
+        onClose={() => setShowCreateShortcutPopup(false)}
+        onConfirm={handleShortcutCreate}
       />
     </aside>
   );

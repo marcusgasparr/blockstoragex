@@ -85,11 +85,11 @@ class FileSystemServiceApi {
     }
   }
 
-  async deleteItem(path: string): Promise<boolean> {
+  async deleteItem(path: string, userId?: number): Promise<boolean> {
     try {
       const response = await axios.delete<ApiResponse<{ deleted: boolean }>>(
         `${this.baseURL}/delete`,
-        { data: { path } }
+        { data: { path, userId: userId || 1 } }
       );
 
       if (!response.data.success) {

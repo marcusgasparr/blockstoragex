@@ -4,6 +4,8 @@ import diskRoutes from './routes/diskRoutes';
 import fileSystemRoutes from './routes/fileSystemRoutes';
 import settingsRoutes from './routes/settingsRoutes';
 import favoritesDbRoutes from './routes/favoritesRoutes';
+import sidebarShortcutsRoutes from './routes/sidebarShortcutsRoutes';
+import logsRoutes from './routes/logsRoutes';
 
 const app = express();
 
@@ -16,6 +18,8 @@ app.use('/api/disk', diskRoutes);
 app.use('/api/files', fileSystemRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/favorites-db', favoritesDbRoutes);
+app.use('/api/sidebar-shortcuts', sidebarShortcutsRoutes);
+app.use('/api/logs', logsRoutes);
 
 // Rota de teste
 app.get('/api/health', (req, res) => {

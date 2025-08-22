@@ -94,6 +94,98 @@
   gap: 4px;
 }
 
+// Separador no dropdown
+.separator {
+  height: 1px;
+  background: var(--border-light);
+  margin: 4px 0;
+}
+
+// Seção de atalhos personalizados
+.shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+
+  .shortcutsHeader {
+    padding: 0 16px;
+
+    .shortcutsTitle {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  }
+
+  .shortcutsList {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .shortcutItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    border-radius: var(--border-radius);
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    position: relative;
+    group: shortcut;
+
+    &:hover {
+      background-color: var(--bg-hover);
+      color: var(--text-primary);
+
+      .shortcutDeleteBtn {
+        opacity: 1;
+        visibility: visible;
+      }
+    }
+
+    .shortcutIcon {
+      font-size: 14px;
+      width: 20px;
+      text-align: center;
+      color: var(--primary-color);
+    }
+
+    .shortcutLabel {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .shortcutDeleteBtn {
+      opacity: 0;
+      visibility: hidden;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 12px;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: var(--transition-fast);
+      margin-left: auto;
+
+      &:hover {
+        background: var(--danger-color);
+        color: white;
+      }
+    }
+  }
+}
+
 .navItem {
   display: flex;
   align-items: center;
@@ -187,5 +279,96 @@
     // background-color: var(--bg-hover);
     // color: var(--text-primary);
     cursor: default;
+  }
+}
+
+// Separador no dropdown
+.separator {
+  height: 1px;
+  background: var(--border-light);
+  margin: 4px 0;
+}
+
+// Seção de atalhos personalizados
+.shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+
+  .shortcutsHeader {
+    padding: 0 16px;
+
+    .shortcutsTitle {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  }
+
+  .shortcutsList {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .shortcutItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    border-radius: var(--border-radius);
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    position: relative;
+
+    &:hover {
+      background-color: var(--bg-hover);
+      color: var(--text-primary);
+
+      .shortcutDeleteBtn {
+        opacity: 1;
+        visibility: visible;
+      }
+    }
+
+    .shortcutIcon {
+      font-size: 14px;
+      width: 20px;
+      text-align: center;
+      color: var(--primary-color);
+    }
+
+    .shortcutLabel {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .shortcutDeleteBtn {
+      opacity: 0;
+      visibility: hidden;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 12px;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: var(--transition-fast);
+      margin-left: auto;
+
+      &:hover {
+        background: var(--danger-color);
+        color: white;
+      }
+    }
   }
 }

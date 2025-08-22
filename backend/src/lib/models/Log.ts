@@ -1,16 +1,23 @@
 import { insert, query } from '../db';
 
 export class Log {
-  static async logAction(logData) {
-    return await insert('logs', {
-      user_id: logData.userId || null,
-      action_type: logData.actionType || 'DELETE',
-      file_path: logData.filePath,
-      file_name: logData.fileName || null,
-      ip_address: logData.ipAddress || null,
-      user_agent: logData.userAgent || null,
-      details: logData.details ? JSON.stringify(logData.details) : null
-    });
+  static async logAction(logData: any) {
+    try {
+      const result = await insert('logs', {
+        user_id: logData.userId || null,
+        action_type: logData.actionType || 'DELETE',
+        file_path: logData.filePath,
+        file_name: logData.fileName || null,
+        ip_address: logData.ipAddress || null,
+        user_agent: logData.userAgent || null,
+        details: logData.details ? JSON.stringify(logData.details) : null
+      });
+      console.log('[LOG INSERT]', { logData, result });
+      return result;
+    } catch (err) {
+      console.error('[LOG ERROR]', err, logData);
+      throw err;
+    }
   }
 
   static async getDeleteLogs(limit = 100) {
@@ -25,7 +32,7 @@ export class Log {
     );
   }
 
-  static async getUserLogs(userId, limit = 50) {
+  static async getUserLogs(userId: number, limit = 50) {
     return await query(
       `SELECT * FROM logs 
        WHERE user_id = ? 

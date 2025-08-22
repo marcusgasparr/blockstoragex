@@ -125,8 +125,10 @@ export const useFileSystem = (initialPath: string = 'G:\\') => {
     if (selectedItems.size === 0) return false;
 
     try {
+      const userId = 1; // ou buscar do contexto/autenticação
       for (const itemPath of selectedItems) {
-        await fileSystemService.deleteItem(itemPath);
+        const fileName = itemPath.split(/[\\/]/).pop() || '';
+  await (fileSystemService as any).deleteItem(itemPath, userId, fileName);
       }
       clearSelection();
       refresh();
