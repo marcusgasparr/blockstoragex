@@ -25,8 +25,10 @@ export interface LogsResponse {
   pagination: PaginationData;
 }
 
+import { API_BASE_URL } from '../config/api';
+
 class LogsService {
-  private readonly API_URL = 'http://localhost:3001/api/logs';
+  private readonly API_URL = `${API_BASE_URL}/logs`;
 
   async getLogs(page: number = 1, pageSize: number = 100): Promise<LogsResponse> {
     try {

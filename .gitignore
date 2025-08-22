@@ -49,3 +49,14 @@ coverage/
 
 # Others
 *.vscode
+# Docker
+*.pid
+docker-compose.override.yml
+.docker/
+
+# Backups
+backups/
+
+# Environment files
+backend/.env
+frontend/.env

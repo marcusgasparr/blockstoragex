@@ -1,6 +1,7 @@
 import axios from "axios";
+import { API_BASE_URL as BASE_URL } from "../config/api";
 
-const API_BASE_URL = "http://localhost:3001/api/favorites-db";
+const API_BASE_URL = `${BASE_URL}/favorites-db`;
 
 export interface FavoriteItem {
   id: number;

@@ -29,7 +29,22 @@ export class FileSystemService {
     try {
       console.log('🔍 Tentando acessar diretório:', dirPath);
       
-      const normalizedPath = path.resolve(dirPath);
+
+      // Corrige caminho para disco C montado no Docker
+      let normalizedPath = path.resolve(dirPath);
+  // ...existing code...
+      // Se começar com /app/C, remove qualquer barra invertida ou barra após /app/C
+      if (process.platform === 'linux' && normalizedPath.startsWith('/app/C')) {
+        normalizedPath = normalizedPath.replace(/\/app\/C(:?\\|\/)+$/, '/app/C');
+        normalizedPath = normalizedPath.replace(/\\/g, '/');
+        // Se terminar com qualquer barra, remove
+        normalizedPath = normalizedPath.replace(/\/app\/C\/+$/, '/app/C');
+      }
+      // Se vier C:\algumaCoisa, converte para /app/C/algumaCoisa
+      if (process.platform === 'linux' && normalizedPath.match(/^C:(\\|\/)/i)) {
+        normalizedPath = normalizedPath.replace(/^C:(\\|\/)?/i, '/app/C/').replace(/\\/g, '/');
+        normalizedPath = normalizedPath.replace(/\/app\/C\/$/, '/app/C');
+      }
       console.log('📁 Caminho normalizado:', normalizedPath);
 
       if (!this.isPathAllowed(normalizedPath)) {
