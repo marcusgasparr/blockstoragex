@@ -23,6 +23,25 @@ const LayoutDefault: React.FC<LayoutDefaultProps> = ({ children }) => {
     return saved || 'G:\\';
   });
 
+  // Effect para carregar disco do banco na inicialização
+  useEffect(() => {
+    const loadDiskFromDatabase = async () => {
+      try {
+        const { settingsService } = await import('../../services/settingsService');
+        const serverDisk = await settingsService.syncDiskWithServer();
+        
+        if (serverDisk !== currentDrive) {
+          console.log('🔄 Sincronizando disco do banco:', serverDisk);
+          setCurrentDrive(serverDisk);
+        }
+      } catch (error) {
+        console.error('❌ Erro ao carregar disco do banco:', error);
+      }
+    };
+
+    loadDiskFromDatabase();
+  }, []); // Executa apenas uma vez na inicialização
+
   // Effect para sincronizar com mudanças do localStorage
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {

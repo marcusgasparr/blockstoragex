@@ -100,8 +100,26 @@ const SettingsPopup: React.FC<SettingsPopupProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     console.log('💾 Salvando novo disco:', selectedDrive);
+    
+    try {
+      // Importar o service no topo do arquivo se ainda não estiver
+      const { settingsService } = await import('../../../services/settingsService');
+      
+      // Salvar no banco de dados
+      const success = await settingsService.updateCurrentDisk(selectedDrive);
+      
+      if (success) {
+        console.log('✅ Disco salvo no banco com sucesso');
+      } else {
+        console.log('⚠️ Disco salvo apenas localmente');
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro ao salvar no banco:', error);
+    }
+    
     console.log('📤 Chamando onDriveChange com:', selectedDrive);
     onDriveChange(selectedDrive);
     onClose();

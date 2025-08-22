@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import styles from "./Starred.module.scss";
 import { useFileSystem } from "../../hooks/useFileSystem";
+import { useFavorites } from "../../hooks/useFavorites";
 import { useNavigate } from 'react-router-dom';
 import { ContextMenu } from "../../components/ContextMenu/ContextMenu";
 import FilePreview from "../../components/FilePreview/FilePreview";
@@ -16,11 +17,6 @@ const Starred: React.FC<StarredProps> = ({ currentDrive }) => {
   const selectedDrive = currentDrive || localStorage.getItem('selectedDrive') || 'G:\\';
   console.log('⭐ Starred usando disco:', selectedDrive);
   
-  const [starredFiles, setStarredFiles] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-
   // Estados para menu de contexto
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
@@ -30,9 +26,8 @@ const Starred: React.FC<StarredProps> = ({ currentDrive }) => {
   const [selectedItem, setSelectedItem] = useState<FileSystemItem | null>(null);
   const [previewFile, setPreviewFile] = useState<FileSystemItem | null>(null);
 
+  // Hook para sistema de arquivos (operações gerais)
   const {
-    getAllStarredItems,
-    toggleStar,
     formatFileSize,
     formatDate,
     clipboard,
@@ -41,38 +36,51 @@ const Starred: React.FC<StarredProps> = ({ currentDrive }) => {
     pasteItems
   } = useFileSystem(selectedDrive);
 
-  const fetchStarred = async () => {
-    setLoading(true);
-    setError(null);
-    let timeoutId: number | null = null;
-    try {
-      const timeoutPromise = new Promise((_, reject) => {
-        timeoutId = window.setTimeout(() => reject(new Error("Tempo limite excedido ao buscar favoritos.")), 10000);
-      });
-      const resultPromise = getAllStarredItems(selectedDrive);
-      const result = await Promise.race([resultPromise, timeoutPromise]);
-      setStarredFiles(result as any[]);
-      console.log('⭐ Favoritos carregados:', (result as any[]).length, 'itens');
-    } catch (err: any) {
-      console.error('❌ Erro ao buscar favoritos:', err);
-      setError(err.message || "Erro ao buscar arquivos favoritos.");
-      setStarredFiles([]);
-    } finally {
-      if (timeoutId) clearTimeout(timeoutId);
-      setLoading(false);
-    }
+  // Hook para gerenciar favoritos
+  const {
+    favorites,
+    loading,
+    error,
+    toggleFavorite,
+    refreshFavorites,
+    stats
+  } = useFavorites(1, selectedDrive);
+
+  // Função auxiliar para obter ícone do arquivo
+  const getFileIcon = (fileName: string, isDirectory: boolean): string => {
+    if (isDirectory) return 'fas fa-folder';
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    const iconMap: Record<string, string> = {
+      'txt': 'fas fa-file-alt',
+      'doc': 'fas fa-file-word', 'docx': 'fas fa-file-word',
+      'pdf': 'fas fa-file-pdf',
+      'jpg': 'fas fa-file-image', 'jpeg': 'fas fa-file-image', 'png': 'fas fa-file-image', 'gif': 'fas fa-file-image',
+      'mp4': 'fas fa-file-video', 'avi': 'fas fa-file-video', 'mov': 'fas fa-file-video',
+      'mp3': 'fas fa-file-audio', 'wav': 'fas fa-file-audio', 'flac': 'fas fa-file-audio',
+      'zip': 'fas fa-file-archive', 'rar': 'fas fa-file-archive', '7z': 'fas fa-file-archive',
+      'exe': 'fas fa-cog', 'msi': 'fas fa-cog'
+    };
+    return iconMap[extension || ''] || 'fas fa-file';
   };
 
-  useEffect(() => {
-    fetchStarred();
-  }, [refreshTrigger, selectedDrive]);
+  // Converter favoritos para formato FileSystemItem
+  const starredFiles: FileSystemItem[] = favorites.map(fav => ({
+    name: fav.file_name,
+    path: fav.file_path,
+    type: fav.isDirectory ? 'directory' : 'file',
+    size: fav.size,
+    modified: new Date(fav.modified || fav.created_at),
+    extension: fav.file_type || undefined,
+    icon: getFileIcon(fav.file_name, fav.isDirectory),
+    isStarred: true,
+    exists: fav.exists
+  }));
 
   // Handler para favoritar/desfavoritar e atualizar favoritos
   const handleToggleStar = async (itemPath: string) => {
     try {
-      await toggleStar(itemPath);
-      // Forçar atualização da lista
-      setRefreshTrigger(prev => prev + 1);
+      await toggleFavorite(itemPath);
+      console.log('⭐ Favorito alternado para:', itemPath);
     } catch (err) {
       console.error('Erro ao alterar favorito:', err);
     }
@@ -133,6 +141,10 @@ const Starred: React.FC<StarredProps> = ({ currentDrive }) => {
     closeContextMenu();
   };
 
+  const handleRefresh = () => {
+    refreshFavorites();
+  };
+
   if (loading) {
     return (
       <div className={styles.starred}>
@@ -156,7 +168,7 @@ const Starred: React.FC<StarredProps> = ({ currentDrive }) => {
         <div className={styles.errorState}>
           <i className="fas fa-exclamation-triangle"></i>
           <p>Erro: {error}</p>
-          <button onClick={fetchStarred} className={styles.retryBtn}>
+          <button onClick={handleRefresh} className={styles.retryBtn}>
             Tentar novamente
           </button>
         </div>
@@ -172,7 +184,7 @@ const Starred: React.FC<StarredProps> = ({ currentDrive }) => {
           <p className={styles.subtitle}>
             {starredFiles.length} {starredFiles.length === 1 ? 'item favorito' : 'itens favoritos'} no disco {selectedDrive}
           </p>
-          <button onClick={fetchStarred} className={styles.refreshBtn} disabled={loading}>
+          <button onClick={handleRefresh} className={styles.refreshBtn} disabled={loading}>
             <i className="fas fa-sync-alt"></i>
             Atualizar
           </button>
@@ -190,49 +202,62 @@ const Starred: React.FC<StarredProps> = ({ currentDrive }) => {
           {starredFiles.map((item, index) => (
             <div
               key={item.path}
-              className={`${styles.starredItem} ${selectedItems.has(item.path) ? styles.selected : ''}`}
+              className={`${styles.starredItem} ${selectedItems.has(item.path) ? styles.selected : ''} ${!item.exists ? styles.unavailable : ''}`}
               onClick={() => handleItemClick(item)}
               onDoubleClick={() => handleItemDoubleClick(item)}
               onContextMenu={(e) => handleContextMenu(e, item)}
             >
               <div className={styles.itemIcon}>
-                <i
-                  className={`${item.icon} ${item.type === 'directory' ? styles.folderIcon : styles.fileIcon}`}
-                  style={{
-                    color: item.type === 'directory' && item.folderColor
-                      ? item.folderColor
-                      : undefined
-                  }}
-                ></i>
-                <i className={`fas fa-star ${styles.starIcon}`}></i>
+                <i className={item.icon} />
+                <div className={styles.starIcon}>
+                  <i className="fas fa-star"></i>
+                </div>
+                {!item.exists && (
+                  <div className={styles.unavailableIcon}>
+                    <i className="fas fa-exclamation-triangle"></i>
+                  </div>
+                )}
               </div>
 
-              <div className={styles.itemInfo}>
-                <h3 className={styles.itemName} title={item.name}>
+              <div className={styles.itemContent}>
+                <div className={styles.itemName} title={item.name}>
                   {item.name}
-                </h3>
-                <p className={styles.itemPath} title={item.path}>
+                </div>
+                <div className={styles.itemPath} title={item.path}>
                   {item.path}
-                </p>
+                </div>
                 <div className={styles.itemDetails}>
                   <span className={styles.itemType}>
-                    {item.type === 'directory' ? 'Pasta' : 'Arquivo'}
+                    {item.type === 'directory' ? 'Pasta' : (item.extension || 'Arquivo')}
                   </span>
                   {item.type === 'file' && (
-                    <>
-                      <span className={styles.itemSize}>
-                        {formatFileSize(item.size)}
-                      </span>
-                      <span className={styles.itemDate}>
-                        {formatDate(item.modified)}
-                      </span>
-                    </>
+                    <span className={styles.itemSize}>
+                      {formatFileSize(item.size)}
+                    </span>
                   )}
+                  <span className={styles.itemDate}>
+                    {formatDate(item.modified)}
+                  </span>
                 </div>
+                {!item.exists && (
+                  <div className={styles.unavailableLabel}>
+                    Arquivo não encontrado
+                  </div>
+                )}
               </div>
 
               <div className={styles.itemActions}>
-                {item.type === 'file' && (
+                <button
+                  className={styles.actionBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleStar(item.path);
+                  }}
+                  title="Remover dos favoritos"
+                >
+                  <i className="fas fa-star"></i>
+                </button>
+                {item.exists && item.type === 'file' && (
                   <button
                     className={styles.actionBtn}
                     onClick={(e) => {
@@ -244,26 +269,18 @@ const Starred: React.FC<StarredProps> = ({ currentDrive }) => {
                     <i className="fas fa-eye"></i>
                   </button>
                 )}
-                <button
-                  className={styles.actionBtn}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleToggleStar(item.path);
-                  }}
-                  title="Remover dos favoritos"
-                >
-                  <i className="fas fa-star"></i>
-                </button>
-                <button
-                  className={styles.actionBtn}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleContextMenu(e, item);
-                  }}
-                  title="Mais opções"
-                >
-                  <i className="fas fa-ellipsis-v"></i>
-                </button>
+                {item.exists && (
+                  <button
+                    className={styles.actionBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGoToLocation(item);
+                    }}
+                    title="Ir para localização"
+                  >
+                    <i className="fas fa-map-marker-alt"></i>
+                  </button>
+                )}
               </div>
             </div>
           ))}

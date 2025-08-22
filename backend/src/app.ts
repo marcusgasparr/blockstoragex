@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import diskRoutes from './routes/diskRoutes';
 import fileSystemRoutes from './routes/fileSystemRoutes';
+import settingsRoutes from './routes/settingsRoutes';
+import favoritesDbRoutes from './routes/favoritesRoutes';
 
 const app = express();
 
@@ -12,6 +14,8 @@ app.use(express.json());
 // Rotas
 app.use('/api/disk', diskRoutes);
 app.use('/api/files', fileSystemRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/favorites-db', favoritesDbRoutes);
 
 // Rota de teste
 app.get('/api/health', (req, res) => {

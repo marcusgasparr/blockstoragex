@@ -68,27 +68,34 @@ export const useFileSystem = (initialPath: string = 'G:\\') => {
   }, [directoryContent]);
 
   const selectItem = useCallback((itemPath: string, index: number, event?: React.MouseEvent) => {
-    if (!directoryContent) return;
-
-    if (event?.ctrlKey) {
-      // Seleção múltipla com Ctrl
-      const newSelection = new Set(selectedItems);
-      if (newSelection.has(itemPath)) {
-        newSelection.delete(itemPath);
-      } else {
-        newSelection.add(itemPath);
-      }
-      setSelectedItems(newSelection);
+    if (!event) {
+      // Seleção simples
+      setSelectedItems(new Set([itemPath]));
       setLastClickedIndex(index);
-    } else if (event?.shiftKey && lastClickedIndex !== null) {
-      // Seleção em intervalo com Shift
+      return;
+    }
+
+    if (event.ctrlKey || event.metaKey) {
+      // Ctrl+Click: toggle individual item
+      setSelectedItems(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(itemPath)) {
+          newSet.delete(itemPath);
+        } else {
+          newSet.add(itemPath);
+        }
+        return newSet;
+      });
+      setLastClickedIndex(index);
+    } else if (event.shiftKey && lastClickedIndex !== null) {
+      // Shift+Click: select range
       selectRange(lastClickedIndex, index);
     } else {
-      // Seleção única
+      // Click normal: select only this item
       setSelectedItems(new Set([itemPath]));
       setLastClickedIndex(index);
     }
-  }, [directoryContent, selectedItems, lastClickedIndex, selectRange]);
+  }, [lastClickedIndex, selectRange]);
 
   const selectAll = useCallback(() => {
     if (!directoryContent) return;
@@ -102,25 +109,25 @@ export const useFileSystem = (initialPath: string = 'G:\\') => {
     setLastClickedIndex(null);
   }, []);
 
-  const createDirectory = useCallback(async (name: string): Promise<boolean> => {
+  const createDirectory = useCallback(async (name: string, parentPath?: string) => {
     try {
-      await fileSystemService.createDirectory(currentPath, name);
+      const targetPath = parentPath || currentPath;
+      await fileSystemService.createDirectory(targetPath, name);
       refresh();
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao criar pasta');
+      setError(err instanceof Error ? err.message : 'Erro ao criar diretório');
       return false;
     }
   }, [currentPath, refresh]);
 
-  const deleteSelectedItems = useCallback(async (): Promise<boolean> => {
+  const deleteSelectedItems = useCallback(async () => {
+    if (selectedItems.size === 0) return false;
+
     try {
-      const selectedPaths = Array.from(selectedItems);
-      
-      for (const path of selectedPaths) {
-        await fileSystemService.deleteItem(path);
+      for (const itemPath of selectedItems) {
+        await fileSystemService.deleteItem(itemPath);
       }
-      
       clearSelection();
       refresh();
       return true;
@@ -130,9 +137,9 @@ export const useFileSystem = (initialPath: string = 'G:\\') => {
     }
   }, [selectedItems, clearSelection, refresh]);
 
-  const renameItem = useCallback(async (itemPath: string, newName: string): Promise<boolean> => {
+  const renameItem = useCallback(async (oldPath: string, newName: string) => {
     try {
-      await fileSystemService.renameItem(itemPath, newName);
+      await fileSystemService.renameItem(oldPath, newName);
       refresh();
       return true;
     } catch (err) {
@@ -190,14 +197,40 @@ export const useFileSystem = (initialPath: string = 'G:\\') => {
     }
   }, [refresh]);
 
+  const getFileName = (filePath: string): string => {
+    const parts = filePath.split(/[\\/]/);
+    return parts[parts.length - 1];
+  };
+
+  const getFileType = (filePath: string): string => {
+    const fileName = getFileName(filePath);
+    const ext = fileName.split('.').pop();
+    return ext ? ext.toLowerCase() : '';
+  };
+
   const toggleStar = useCallback(async (itemPath: string) => {
     try {
-      const result = await fileSystemService.toggleStar(itemPath);
+      const { favoritesService } = await import('../services/favoritesService');
+      const fileName = getFileName(itemPath);
+      const fileType = getFileType(itemPath);
+
+      const result = await favoritesService.toggleFavorite(itemPath, fileName, fileType);
+
+      console.log('⭐ Favorito alternado:', result.action, 'para', itemPath);
+
       refresh();
-      return result;
+      return result.isFavorite;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao favoritar item');
-      return false;
+      console.error('❌ Erro ao favoritar no banco:', err);
+      // Fallback para o método local se o banco falhar
+      try {
+        const result = await fileSystemService.toggleStar(itemPath);
+        refresh();
+        return result;
+      } catch (localErr) {
+        setError(localErr instanceof Error ? localErr.message : 'Erro ao favoritar item');
+        return false;
+      }
     }
   }, [refresh]);
 
@@ -222,7 +255,52 @@ export const useFileSystem = (initialPath: string = 'G:\\') => {
 
   // Buscar todos os favoritos do disco
   const getAllStarredItems = useCallback(async (rootPath: string = "G:\\") => {
-    return await fileSystemService.getAllStarredItems(rootPath);
+    try {
+      // Importar o service de favoritos dinamicamente
+      const { favoritesService } = await import('../services/favoritesService');
+      
+      // Buscar favoritos do banco de dados
+      const favorites = await favoritesService.getUserFavorites(1, rootPath);
+      
+      // Função auxiliar para obter ícone do arquivo
+      const getFileIcon = (fileName: string, isDirectory: boolean): string => {
+        if (isDirectory) return '📁';
+        
+        const extension = fileName.split('.').pop()?.toLowerCase();
+        const iconMap: Record<string, string> = {
+          'txt': '📄', 'doc': '📝', 'docx': '📝', 'pdf': '📕',
+          'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️',
+          'mp4': '🎬', 'avi': '🎬', 'mov': '🎬',
+          'mp3': '🎵', 'wav': '🎵', 'flac': '🎵',
+          'zip': '📦', 'rar': '📦', '7z': '📦',
+          'exe': '⚙️', 'msi': '⚙️'
+        };
+        
+        return iconMap[extension || ''] || '📄';
+      };
+      
+      // Converter para o formato esperado pelo FileSystemItem
+      const formattedFavorites = favorites.map(fav => ({
+        name: fav.file_name,
+        path: fav.file_path,
+        type: fav.isDirectory ? 'directory' as const : 'file' as const,
+        size: fav.size,
+        modified: new Date(fav.modified || fav.created_at),
+        extension: fav.file_type || undefined,
+        icon: getFileIcon(fav.file_name, fav.isDirectory),
+        isStarred: true,
+        exists: fav.exists
+      }));
+      
+      console.log('⭐ Favoritos do banco obtidos:', formattedFavorites.length);
+      return formattedFavorites;
+      
+    } catch (err) {
+      console.error('❌ Erro ao buscar favoritos do banco, usando fallback local:', err);
+      
+      // Fallback para o método local se o banco falhar
+      return await fileSystemService.getAllStarredItems(rootPath);
+    }
   }, []);
 
   // Carregar conteúdo inicial e reagir a mudanças no initialPath

@@ -5,13 +5,13 @@ const API_BASE_URL = "http://localhost:3001/api";
 export interface FileSystemItem {
   name: string;
   path: string;
-  type: "file" | "directory";
+  type: 'file' | 'directory';
   size: number;
   modified: Date;
   extension?: string;
-  icon: string;
+  icon?: string;
   isStarred?: boolean;
-  folderColor?: string;
+  exists?: boolean; // <-- Adicione esta linha
 }
 
 export interface DirectoryContent {
@@ -26,6 +26,17 @@ export interface ApiResponse<T> {
   data: T;
   timestamp: string;
   message?: string;
+}
+
+export interface FavoriteItem {
+  file_name: string;
+  file_path: string;
+  isDirectory: boolean;
+  size: number;
+  modified?: string;
+  created_at?: string;
+  file_type?: string;
+  exists?: boolean;
 }
 
 class FileSystemServiceApi {
@@ -197,13 +208,25 @@ class FileSystemServiceApi {
 
   async getAllStarredItems(rootPath: string = "H:\\"): Promise<FileSystemItem[]> {
     try {
-      const response = await axios.get<ApiResponse<FileSystemItem[]>>(
+      const response = await axios.get<ApiResponse<FavoriteItem[]>>(
         `${this.baseURL}/starred?rootPath=${encodeURIComponent(rootPath)}`
       );
       if (!response.data.success) {
         throw new Error(response.data.message || "Erro ao buscar favoritos");
       }
-      return response.data.data;
+      const favorites = response.data.data;
+      const starredFiles: FileSystemItem[] = favorites.map(fav => ({
+        name: fav.file_name,
+        path: fav.file_path,
+        type: fav.isDirectory ? 'directory' : 'file',
+        size: fav.size,
+        modified: new Date(fav.modified ?? fav.created_at ?? Date.now()), // <-- Corrigido aqui
+        extension: fav.file_type || undefined,
+        icon: getFileIcon(fav.file_name, fav.isDirectory),
+        isStarred: true,
+        exists: fav.exists
+      } as FileSystemItem));
+      return starredFiles;
     } catch (error) {
       console.error("Erro ao buscar favoritos:", error);
       throw new Error("Falha ao buscar favoritos");
@@ -237,6 +260,22 @@ class FileSystemServiceApi {
 
     return new Date(date).toLocaleDateString("pt-BR");
   }
+}
+
+function getFileIcon(fileName: string, isDirectory: boolean): string {
+  if (isDirectory) return 'fas fa-folder';
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  const iconMap: Record<string, string> = {
+    'txt': 'fas fa-file-alt',
+    'doc': 'fas fa-file-word', 'docx': 'fas fa-file-word',
+    'pdf': 'fas fa-file-pdf',
+    'jpg': 'fas fa-file-image', 'jpeg': 'fas fa-file-image', 'png': 'fas fa-file-image', 'gif': 'fas fa-file-image',
+    'mp4': 'fas fa-file-video', 'avi': 'fas fa-file-video', 'mov': 'fas fa-file-video',
+    'mp3': 'fas fa-file-audio', 'wav': 'fas fa-file-audio', 'flac': 'fas fa-file-audio',
+    'zip': 'fas fa-file-archive', 'rar': 'fas fa-file-archive', '7z': 'fas fa-file-archive',
+    'exe': 'fas fa-cog', 'msi': 'fas fa-cog'
+  };
+  return iconMap[extension || ''] || 'fas fa-file';
 }
 
 export const fileSystemService = new FileSystemServiceApi();
